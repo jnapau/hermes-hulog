@@ -1,0 +1,128 @@
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-SemiBold.ttf') format('truetype');
+  font-weight: 500 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-Bold.ttf') format('truetype');
+  font-weight: 700 800;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #211f1c;
+    background: #fff8ec;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #e3d5bd; border-radius: 9999px; }
+}
+
+@layer components {
+  .btn-flame {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-flame px-6 py-4 text-lg font-extrabold text-cocoa shadow-btn transition active:translate-y-[2px] active:shadow-none hover:brightness-105 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-sunk;
+  }
+  .card {
+    @apply rounded-card border border-[#F0E3CC] bg-white shadow-xs;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-2xs font-bold;
+  }
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.16em];
+  }
+}
+
+/* ── Hestia's flame ───────────────────────────────────────────────────────── */
+.hestia-dim {
+  filter: saturate(0.35) brightness(0.92);
+  transition: filter 0.8s ease;
+}
+.hestia-lit {
+  filter: drop-shadow(0 0 22px rgba(245, 165, 36, 0.55));
+  transition: filter 0.8s ease;
+}
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.anim-bob { animation: bob 4s ease-in-out infinite; }
+
+@keyframes flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+  50% { transform: scale(1.12) rotate(2deg); opacity: 0.9; }
+}
+.anim-flicker { display: inline-block; animation: flicker 1.4s ease-in-out infinite; transform-origin: 50% 90%; }
+
+@keyframes coin-drop {
+  0% { transform: translateY(-120px) rotateY(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  80% { transform: translateY(0) rotateY(540deg); opacity: 1; }
+  100% { transform: translateY(14px) rotateY(720deg); opacity: 0; }
+}
+.anim-coin-drop { animation: coin-drop 0.9s cubic-bezier(.45,.05,.55,.95) both; }
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.85) translateY(10px); }
+  70% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+.anim-pop { animation: pop-in 0.45s cubic-bezier(.2,.7,.2,1) both; }
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.anim-up { animation: slide-up 0.4s cubic-bezier(.2,.7,.2,1) both; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.anim-shake { animation: shake 0.4s ease both; }
+
+@keyframes crack {
+  0% { transform: scale(1) rotate(0); }
+  20% { transform: scale(1.05) rotate(-4deg); }
+  40% { transform: scale(1.05) rotate(4deg); }
+  60% { transform: scale(1.08) rotate(-3deg); }
+  100% { transform: scale(0.2); opacity: 0; }
+}
+.anim-crack { animation: crack 0.9s ease-in both; }
+
+@keyframes sparkle { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+.anim-sparkle { animation: sparkle 1.6s ease-in-out infinite; }
+
+.bg-hulog {
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #ffe6b0 0%, rgba(255, 230, 176, 0) 60%),
+    #fff8ec;
+}
+
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
