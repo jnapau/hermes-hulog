@@ -89,8 +89,8 @@ export default function AdminQuestions() {
     e.preventDefault();
 
     let kind: CardKind = 'binary';
-    let answer = binaryAnswer;
-    let answerLabel = binaryAnswer;
+    let answer: string | undefined = binaryAnswer;
+    let answerLabel: string = binaryAnswer;
     let options = undefined;
     let items = undefined;
     let categories = undefined;

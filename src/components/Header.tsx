@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ShieldAlert, Sparkles, Home as HomeIcon, User as UserIcon, LogOut, UserPlus, LogIn, X } from 'lucide-react';
+import { ShieldAlert, Sparkles, Home as HomeIcon, User as UserIcon, LogOut, UserPlus, LogIn, X, Lock } from 'lucide-react';
 import { useAuth, loginUser, registerUser, logoutUser } from '../lib/users';
+import { useAdminAuth } from '../lib/adminAuth';
 
 export function Header() {
   const { currentUser, users } = useAuth();
+  const isAdmin = useAdminAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [usernameInput, setUsernameInput] = useState('');
@@ -97,14 +99,17 @@ export function Header() {
             </span>
           </button>
 
-          <NavLink
-            to="/admin"
-            className="flex items-center gap-1.5 rounded-xl border border-[#E3D5BD] bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-ink-muted hover:text-ink hover:bg-white transition"
-            title="Curriculum & Analytics Administration"
-          >
-            <ShieldAlert className="h-3.5 w-3.5 text-flame-deep" />
-            <span className="hidden sm:inline font-bold">Admin</span>
-          </NavLink>
+          {/* Admin Panel button - Only visible when Admin is logged in */}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className="flex items-center gap-1.5 rounded-xl border border-brand bg-brand text-white px-2.5 py-1.5 text-xs font-bold transition shadow-xs hover:bg-brand-light"
+              title="Curriculum & Analytics Administration"
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
+              <span className="hidden sm:inline font-bold">Admin Panel</span>
+            </NavLink>
+          )}
         </div>
       </div>
 
@@ -244,23 +249,16 @@ export function Header() {
                   </button>
                 </div>
 
-                {/* Sample quick select */}
-                <div className="pt-2 border-t border-stone-100">
-                  <span className="text-[10px] font-bold text-ink-muted block mb-1">
-                    Or select an existing demo player:
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {users.slice(0, 4).map((u) => (
-                      <button
-                        key={u.username}
-                        type="button"
-                        onClick={() => handleQuickSwitch(u.username)}
-                        className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-ink-muted hover:bg-amber-100 hover:text-cocoa transition"
-                      >
-                        {u.username}
-                      </button>
-                    ))}
-                  </div>
+                {/* Admin Portal Gateway */}
+                <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                  <span className="text-[10px] text-ink-muted">Are you a curriculum admin?</span>
+                  <NavLink
+                    to="/admin"
+                    onClick={() => setShowAuthModal(false)}
+                    className="text-[11px] font-bold text-amber-700 hover:underline flex items-center gap-1"
+                  >
+                    <Lock className="h-3 w-3" /> Admin Login (Hestia)
+                  </NavLink>
                 </div>
               </form>
             )}

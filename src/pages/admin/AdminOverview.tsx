@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ALL_FORMATS, ALL_TIERS } from '../../data/questions';
-import { COURSES } from '../../data/courses';
+import { ALL_TIERS } from '../../data/questions';
 import { getDaySchedule, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
 import { todayPH } from '../../lib/date';
 import { TIER_STYLE } from '../../data/types';
@@ -8,16 +7,13 @@ import { HestiaMascot } from '../../components/HestiaMascot';
 import { Clock, ArrowRight, BarChart3, Layers, Users, TrendingUp } from 'lucide-react';
 import { useAllQuestions } from '../../lib/customQuestions';
 import { getAnswerStatistics } from '../../lib/statistics';
-import { useAuth } from '../../lib/users';
 
 export default function AdminOverview() {
   const today = todayPH();
   const scheduleToday = getDaySchedule(today);
   const allQuestions = useAllQuestions();
-  const { logs, users } = useAuth();
   const stats = getAnswerStatistics();
   const totalCards = allQuestions.length;
-  const totalCourses = COURSES.length;
 
   return (
     <div className="space-y-6">
@@ -166,7 +162,7 @@ export default function AdminOverview() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {ALL_TIERS.map((tier) => {
-            const count = QUESTIONS.filter((q) => q.tier === tier).length;
+            const count = allQuestions.filter((q) => q.tier === tier).length;
             const style = TIER_STYLE[tier];
             return (
               <div

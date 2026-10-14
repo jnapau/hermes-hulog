@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Sparkles, CheckCircle2, User } from 'lucide-react';
 import { useProgress, canBasag, doBasag } from '../lib/progress';
-import { todayPH, weekStart, addDays, dayOfWeek, DAY_SHORT } from '../lib/date';
+import { todayPH, weekStart, addDays, DAY_SHORT } from '../lib/date';
 import { getDaySchedule } from '../lib/schedule';
 import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';

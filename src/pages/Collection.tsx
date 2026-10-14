@@ -7,7 +7,7 @@ import {
   CollectibleKind,
 } from '../data/collectibles';
 import { HestiaMascot } from '../components/HestiaMascot';
-import { Sparkles, Lock, X, Award, Compass, Check, Shirt, Eye } from 'lucide-react';
+import { Lock, X, Award, Compass, Shirt, Eye } from 'lucide-react';
 import { useAuth, setEquippedLook } from '../lib/users';
 
 export default function Collection() {

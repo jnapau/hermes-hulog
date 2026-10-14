@@ -1,58 +1,89 @@
 import { useState } from 'react';
-import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, HelpCircle, Calendar, BarChart3, ArrowLeft } from 'lucide-react';
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, HelpCircle, Calendar, BarChart3, ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { HestiaMascot } from '../../components/HestiaMascot';
-
-const PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'hestia2026';
+import { loginAdmin, logoutAdmin, useAdminAuth } from '../../lib/adminAuth';
 
 export default function AdminLayout() {
-  const [authed, setAuthed] = useState(() => {
-    return sessionStorage.getItem('hulog_admin_auth') === 'true';
-  });
-  const [pin, setPin] = useState('');
-  const [err, setErr] = useState(false);
+  const isAuthed = useAdminAuth();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === PASSCODE) {
-      sessionStorage.setItem('hulog_admin_auth', 'true');
-      setAuthed(true);
-      setErr(false);
-    } else {
-      setErr(true);
+    setErr('');
+    const res = loginAdmin(username, password);
+    if (!res.success) {
+      setErr(res.message || 'Maling username o password.');
     }
   };
 
-  if (!authed) {
+  const handleLogout = () => {
+    logoutAdmin();
+    navigate('/');
+  };
+
+  if (!isAuthed) {
     return (
       <div className="min-h-screen bg-canvas flex flex-col justify-center items-center px-4">
         <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl border border-hairline text-center">
           <HestiaMascot pose="ok" height={90} className="mx-auto mb-2" />
           <h2 className="text-lg font-black text-ink">Admin Panel Login</h2>
           <p className="text-xs text-ink-muted mt-1 mb-4">
-            Hermes Hulog Curriculum & Question Bank Portal
+            Curriculum Bank & User Response Analytics Portal
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-3">
-            <input
-              type="password"
-              placeholder="Admin passcode (default: hestia2026)"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold focus:border-brand focus:outline-none"
-            />
-            {err && <p className="text-[11px] font-bold text-rose-500">Incorrect passcode. Please try again.</p>}
+          <form onSubmit={handleLogin} className="space-y-3 text-left">
+            <div>
+              <label className="text-[10px] font-extrabold uppercase text-ink-muted block mb-1">
+                Admin Username
+              </label>
+              <input
+                type="text"
+                placeholder="Username (e.g. Hestia)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-ink focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-extrabold uppercase text-ink-muted block mb-1">
+                Admin Password
+              </label>
+              <input
+                type="password"
+                placeholder="Password (e.g. HermesHulog)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-ink focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            {err && (
+              <p className="text-[11px] font-bold text-rose-500 bg-rose-50 p-2 rounded-xl border border-rose-200">
+                {err}
+              </p>
+            )}
+
             <button
               type="submit"
-              className="w-full rounded-xl bg-brand py-2 text-xs font-bold text-white hover:bg-brand-light transition shadow-sm"
+              className="w-full rounded-xl bg-brand py-2.5 text-xs font-bold text-white hover:bg-brand-light transition shadow-sm"
             >
-              Access Admin Portal
+              Log In as Administrator
             </button>
           </form>
 
-          <Link to="/" className="mt-4 inline-block text-[11px] text-ink-muted hover:underline">
-            ← Return to Main WebApp
-          </Link>
+          <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-ink-muted">
+            <span className="flex items-center gap-1 font-semibold text-stone-500">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Protected Portal
+            </span>
+            <Link to="/" className="text-brand hover:underline font-bold">
+              ← Back to WebApp
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -125,6 +156,15 @@ export default function AdminLayout() {
               <BarChart3 className="h-3.5 w-3.5 text-amber-300" />
               <span>Answer Analytics</span>
             </NavLink>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1.5 text-xs font-bold transition flex items-center gap-1"
+              title="Log out of Admin Panel"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </nav>
         </div>
       </header>
