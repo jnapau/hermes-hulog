@@ -3,7 +3,6 @@ import PlayerLayout from './components/PlayerLayout';
 import Home from './pages/Home';
 import Play from './pages/Play';
 import Collection from './pages/Collection';
-import Settings from './pages/Settings';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminQuestions from './pages/admin/AdminQuestions';
@@ -16,7 +15,6 @@ export default function App() {
       <Route element={<PlayerLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/koleksyon" element={<Collection />} />
-        <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="/play" element={<Play />} />
       <Route path="/admin" element={<AdminLayout />}>

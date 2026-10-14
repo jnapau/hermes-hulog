@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Play, Sparkles, CheckCircle2 } from 'lucide-react';
-import { useProgress, flameInfo, weekBarya, canBasag, doBasag } from '../lib/progress';
+import { Play, Sparkles, CheckCircle2, User } from 'lucide-react';
+import { useProgress, canBasag, doBasag } from '../lib/progress';
 import { todayPH, weekStart, addDays, dayOfWeek, DAY_SHORT } from '../lib/date';
 import { getDaySchedule } from '../lib/schedule';
 import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';
 import { playBasag } from '../lib/sound';
 import { COLLECTIBLE_BY_ID } from '../data/collectibles';
+import { useAuth } from '../lib/users';
 
 export default function Home() {
   const progress = useProgress();
+  const { currentUser } = useAuth();
   const today = todayPH();
-  const flame = flameInfo(progress, today);
   const playedToday = Boolean(progress.plays[today]);
   const schedule = getDaySchedule(today);
 
   const [basagReward, setBasagReward] = useState<string | null>(null);
 
-  // Weekly tracker calculation
+  // Weekly tracker days
   const startOfThisWeek = weekStart(today);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfThisWeek, i));
-  const currentWeekBarya = weekBarya(progress, today);
   const readyToBasag = canBasag(progress, today);
 
   const handleBasag = () => {
@@ -32,15 +32,13 @@ export default function Home() {
     }
   };
 
-  const fillPercent = Math.min(100, Math.round((currentWeekBarya / 18) * 100));
-
   return (
     <div className="mx-auto max-w-md px-4 py-6 sm:px-6">
-      {/* Daily Flame Badge / Streak */}
+      {/* Top Welcome / Player Header (Clean, No Inaccurate Stats) */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-100/70 px-3.5 py-1.5 text-xs font-bold text-cocoa shadow-xs">
-          <Flame className={`h-4 w-4 text-flame-deep ${flame.streak > 0 ? 'anim-flicker fill-amber-500' : ''}`} />
-          <span>{flame.streak === 1 ? '1 day streak' : `${flame.streak}-day streak`}</span>
+        <div className="flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-100/70 px-3.5 py-1.5 text-xs font-bold text-cocoa shadow-2xs">
+          <User className="h-3.5 w-3.5 text-amber-700" />
+          <span>{currentUser ? currentUser.username : 'Guest Player'}</span>
         </div>
 
         <div className="text-right">
@@ -54,57 +52,54 @@ export default function Home() {
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
 
         {/* Hestia message bubble */}
-        <div className="relative mb-3 max-w-[280px] rounded-2xl bg-white px-3.5 py-2 text-center text-xs font-medium text-ink shadow-xs border border-amber-200">
-          <p>{flame.message}</p>
+        <div className="relative mb-3 max-w-[280px] rounded-2xl bg-white px-3.5 py-2 text-center text-xs font-medium text-ink shadow-2xs border border-amber-200">
+          <p>
+            {playedToday
+              ? "Magaling! You've dropped your coin for today. See you tomorrow!"
+              : 'Isang hulog araw-araw. Ready for your 60-second micro-learning habit?'}
+          </p>
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-amber-200 rotate-45" />
         </div>
 
         {/* Mascot & Alkansya Center Stage */}
-        <div className="flex items-end justify-center gap-1 my-2">
-          <Alkansya fillPercentage={fillPercent} />
+        <div className="flex items-end justify-center gap-1 my-3">
+          <Alkansya fillPercentage={playedToday ? 80 : 45} />
           <div className="-ml-8 mb-2">
             <HestiaMascot
-              pose={playedToday ? 'done' : flame.state === 'baga' ? 'paused' : 'idle'}
+              pose={playedToday ? 'done' : 'idle'}
               height={125}
+              showLookBadge={true}
               className={`transition-transform hover:scale-105 ${playedToday ? 'hestia-lit' : ''}`}
             />
           </div>
         </div>
 
-        {/* Alkansya Fill status */}
-        <div className="text-center mt-2 mb-4">
-          <p className="text-xs font-extrabold text-cocoa">
-            {currentWeekBarya} {currentWeekBarya === 1 ? 'coin' : 'coins'} saved this week
-          </p>
-          <p className="text-[11px] text-ink-muted">
-            {dayOfWeek(today) === 0 ? 'Today is Alkansya Break Day!' : `${7 - dayOfWeek(today)} days until Sunday Alkansya Break`}
-          </p>
-        </div>
-
         {/* Action Button: Play or Done */}
-        {!playedToday ? (
-          <Link
-            to="/play"
-            className="btn-flame w-full max-w-xs text-center flex items-center justify-center gap-2 group shadow-md"
-          >
-            <Play className="h-5 w-5 fill-cocoa group-hover:scale-110 transition-transform" />
-            <span>Drop a coin today · 60s</span>
-          </Link>
-        ) : (
-          <div className="w-full max-w-xs space-y-2">
-            <div className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800 flex items-center justify-center gap-2 shadow-xs">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              <span>You've completed your daily drop!</span>
+        <div className="w-full max-w-xs mt-2 mb-4">
+          {!playedToday ? (
+            <Link
+              to="/play"
+              className="btn-flame w-full text-center flex items-center justify-center gap-2 group shadow-md py-3 text-sm"
+            >
+              <Play className="h-5 w-5 fill-cocoa group-hover:scale-110 transition-transform" />
+              <span>Drop a coin today · 60s</span>
+            </Link>
+          ) : (
+            <div className="space-y-2">
+              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800 flex items-center justify-center gap-2 shadow-2xs">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <span>You've completed your daily drop!</span>
+              </div>
+              <p className="text-center text-xs font-semibold text-ink-muted">
+                See you tomorrow! One drop each day.
+              </p>
             </div>
-            <p className="text-center text-xs font-semibold text-ink-muted">
-              See you tomorrow! One drop each day.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Sunday Basag Ritual Banner */}
         {readyToBasag && (
-          <div className="mt-4 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-flame p-4 text-center shadow-md animate-bounce">
+          <div className="mt-2 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-flame p-4 text-center shadow-md animate-bounce">
             <h4 className="font-extrabold text-cocoa text-sm flex items-center justify-center gap-1.5">
               <Sparkles className="h-4 w-4" /> Break the Alkansya! (Sunday Basag)
             </h4>
@@ -139,7 +134,7 @@ export default function Home() {
               </p>
               <button
                 onClick={() => setBasagReward(null)}
-                className="btn-flame w-full py-2.5 text-sm"
+                className="btn-flame w-full py-2.5 text-sm font-bold"
               >
                 Place on Collection Shelf ✨
               </button>
@@ -147,8 +142,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Week Day Pills */}
-        <div className="mt-6 w-full border-t border-[#F0E3CC] pt-4">
+        {/* Week Day Tracker */}
+        <div className="mt-4 w-full border-t border-[#F0E3CC] pt-4">
           <p className="text-center text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-2">
             Weekly Drops (Mon - Sun)
           </p>
@@ -168,7 +163,7 @@ export default function Home() {
                   <div
                     className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
                       played
-                        ? 'bg-amber-400 text-cocoa shadow-xs scale-105'
+                        ? 'bg-amber-400 text-cocoa shadow-2xs scale-105'
                         : isCurrentDay
                         ? 'border-2 border-dashed border-amber-400 bg-white text-ink-muted'
                         : 'bg-surface-sunk text-stone-300'

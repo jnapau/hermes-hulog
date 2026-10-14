@@ -9,6 +9,8 @@ import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';
 import { TIER_STYLE } from '../data/types';
 
+import { recordUserAnswer, getAllAnswerLogs } from '../lib/users';
+
 export default function Play() {
   const navigate = useNavigate();
   const today = todayPH();
@@ -59,6 +61,9 @@ export default function Play() {
     setSelectedAnswer(ansKey);
     const isCorrect = ansKey === question.answer;
 
+    // Record answer under active registered user
+    recordUserAnswer(question.id, ansKey, isCorrect, today);
+
     if (isCorrect) {
       playClink(progress.sound);
       setDroppingCoin(true);
@@ -92,6 +97,7 @@ export default function Play() {
 
     const nextResults = [...results, isAllCorrect];
     setResults(nextResults);
+    recordUserAnswer(question.id, isAllCorrect ? 'SORT_CORRECT' : 'SORT_INCORRECT', isAllCorrect, today);
     setShowFeedback(true);
   };
 
@@ -428,28 +434,39 @@ export default function Play() {
             {question.why}
           </p>
 
-          {/* Tanong ng Bayan: Anonymous Community Statistics */}
-          {question.communityStats && (
-            <div className="my-2.5 rounded-xl border border-sky-200 bg-sky-50/70 p-2.5 text-left">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-sky-800 uppercase tracking-wider mb-1">
-                <span className="flex items-center gap-1">
-                  <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Tanong ng Bayan (User Statistics)
-                </span>
-                <span>{question.communityStats.correctPct}% answered correctly</span>
+          {/* Tanong ng Bayan: Registered User Statistics */}
+          {(() => {
+            const questionLogs = getAllAnswerLogs().filter((l) => l.questionId === question.id);
+            const totalAttempts = questionLogs.length;
+            const correctAttempts = questionLogs.filter((l) => l.isCorrect).length;
+            const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : (question.communityStats?.correctPct ?? 100);
+            const wrongLog = questionLogs.find((l) => !l.isCorrect);
+            const trap = wrongLog ? `Common trap: Player chose "${wrongLog.userChoice}"` : question.communityStats?.topMisconception;
+
+            return (
+              <div className="my-2.5 rounded-xl border border-sky-200 bg-sky-50/70 p-2.5 text-left">
+                <div className="flex items-center justify-between text-[10px] font-extrabold text-sky-800 uppercase tracking-wider mb-1">
+                  <span className="flex items-center gap-1">
+                    <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Tanong ng Bayan (Registered User Data)
+                  </span>
+                  <span>
+                    {accuracy}% correct ({totalAttempts} {totalAttempts === 1 ? 'user log' : 'user logs'})
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-sky-200 overflow-hidden mb-1">
+                  <div
+                    className="h-full bg-sky-600 transition-all duration-500 rounded-full"
+                    style={{ width: `${accuracy}%` }}
+                  />
+                </div>
+                {trap && (
+                  <p className="text-[11px] text-sky-900 font-medium leading-tight">
+                    💡 <strong>{trap}</strong>
+                  </p>
+                )}
               </div>
-              <div className="h-1.5 w-full rounded-full bg-sky-200 overflow-hidden mb-1">
-                <div
-                  className="h-full bg-sky-600 transition-all duration-500 rounded-full"
-                  style={{ width: `${question.communityStats.correctPct}%` }}
-                />
-              </div>
-              {question.communityStats.topMisconception && (
-                <p className="text-[11px] text-sky-900 font-medium leading-tight">
-                  💡 <strong>Common trap:</strong> {question.communityStats.topMisconception}
-                </p>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           <button
             onClick={handleNextCard}

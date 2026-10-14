@@ -1,10 +1,10 @@
 /**
  * User Answer Analytics and Community Statistics.
- * Replaces static question schedule exports with rich behavioral learning data.
+ * Powered directly by actual registered user answers (from local database/logs).
  */
-import { QUESTIONS } from '../data/questions';
 import type { FinancialTier, Question } from '../data/types';
-import { getProgress } from './progress';
+import { getAllQuestions } from './customQuestions';
+import { getAllAnswerLogs, getAllUsers, User, AnswerLog } from './users';
 
 export interface QuestionStatRow {
   question: Question;
@@ -13,7 +13,15 @@ export interface QuestionStatRow {
   correctAnswers: number;
   accuracyRate: number;
   topMisconception: string;
-  communityBenchmark: number;
+  userResponses: AnswerLog[];
+}
+
+export interface UserSummaryRow {
+  user: User;
+  totalAttempts: number;
+  correctAnswers: number;
+  accuracyRate: number;
+  lastActive: string;
 }
 
 export interface TierSummary {
@@ -24,23 +32,20 @@ export interface TierSummary {
   questionCount: number;
 }
 
-/**
- * Calculates current answer statistics by combining community benchmark data
- * with live local player answers from localStorage.
- */
-export function getAnswerStatistics(): {
+export interface AnswerStatisticsResult {
   overallAccuracy: number;
   totalAttempts: number;
+  totalRegisteredUsers: number;
   tierSummaries: Record<FinancialTier, TierSummary>;
   rows: QuestionStatRow[];
-} {
-  const progress = getProgress();
-  const localPlays = Object.values(progress.plays || {});
+  userSummaries: UserSummaryRow[];
+  recentLogs: AnswerLog[];
+}
 
-  // Tally any local plays by question
-  // Local plays store results array: boolean[]
-  const localCorrectCount = localPlays.reduce((sum, p) => sum + (p.results ? p.results.filter(Boolean).length : 0), 0);
-  const localTotalAttempts = localPlays.reduce((sum, p) => sum + (p.results ? p.results.length : 0), 0);
+export function getAnswerStatistics(): AnswerStatisticsResult {
+  const allQuestions = getAllQuestions();
+  const allLogs = getAllAnswerLogs();
+  const allUsers = getAllUsers();
 
   const tiers: FinancialTier[] = [
     'Cash Management',
@@ -62,84 +67,74 @@ export function getAnswerStatistics(): {
     };
   });
 
-  const rows: QuestionStatRow[] = QUESTIONS.map((q) => {
-    const benchmark = q.communityStats.correctPct;
-    const baseAttempts = q.communityStats.sampleSize;
-    const baseCorrect = Math.round((benchmark / 100) * baseAttempts);
+  // Calculate per-question statistics based on registered user answer logs
+  const rows: QuestionStatRow[] = allQuestions.map((q) => {
+    const questionLogs = allLogs.filter((l) => l.questionId === q.id);
+    const totalAttempts = questionLogs.length;
+    const correctAnswers = questionLogs.filter((l) => l.isCorrect).length;
+    const accuracyRate = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 0;
 
-    tierSummaries[q.tier].questionCount += 1;
-    tierSummaries[q.tier].totalAttempts += baseAttempts;
-    tierSummaries[q.tier].correctAnswers += baseCorrect;
+    // Track common wrong choices
+    const wrongLogs = questionLogs.filter((l) => !l.isCorrect);
+    const misconception =
+      wrongLogs.length > 0
+        ? `Mistaken choice: "${wrongLogs[0].userChoice}" by registered players`
+        : q.communityStats?.topMisconception || 'No errors recorded yet';
+
+    if (tierSummaries[q.tier]) {
+      tierSummaries[q.tier].questionCount += 1;
+      tierSummaries[q.tier].totalAttempts += totalAttempts;
+      tierSummaries[q.tier].correctAnswers += correctAnswers;
+    }
 
     return {
       question: q,
       tier: q.tier,
-      totalAttempts: baseAttempts,
-      correctAnswers: baseCorrect,
-      accuracyRate: benchmark,
-      topMisconception: q.communityStats.topMisconception || 'Misinterpreting statutory limits',
-      communityBenchmark: benchmark,
+      totalAttempts,
+      correctAnswers,
+      accuracyRate,
+      topMisconception: misconception,
+      userResponses: questionLogs,
     };
   });
 
-  // Calculate tier averages
+  // Compute tier averages
   tiers.forEach((t) => {
     const summary = tierSummaries[t];
-    summary.accuracyRate = summary.totalAttempts > 0 ? Math.round((summary.correctAnswers / summary.totalAttempts) * 100) : 0;
+    if (summary) {
+      summary.accuracyRate =
+        summary.totalAttempts > 0 ? Math.round((summary.correctAnswers / summary.totalAttempts) * 100) : 0;
+    }
   });
 
-  const totalBaseAttempts = rows.reduce((s, r) => s + r.totalAttempts, 0) + localTotalAttempts;
-  const totalBaseCorrect = rows.reduce((s, r) => s + r.correctAnswers, 0) + localCorrectCount;
-  const overallAccuracy = totalBaseAttempts > 0 ? Math.round((totalBaseCorrect / totalBaseAttempts) * 100) : 84;
+  // Calculate per-user summaries
+  const userSummaries: UserSummaryRow[] = allUsers.map((u) => {
+    const uLogs = allLogs.filter((l) => l.username.toLowerCase() === u.username.toLowerCase());
+    const totalAttempts = uLogs.length;
+    const correctAnswers = uLogs.filter((l) => l.isCorrect).length;
+    const accuracyRate = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 0;
+    const lastLog = uLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+
+    return {
+      user: u,
+      totalAttempts,
+      correctAnswers,
+      accuracyRate,
+      lastActive: lastLog ? lastLog.date : u.registeredAt.slice(0, 10),
+    };
+  });
+
+  const totalAttempts = allLogs.length;
+  const totalCorrect = allLogs.filter((l) => l.isCorrect).length;
+  const overallAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
   return {
     overallAccuracy,
-    totalAttempts: totalBaseAttempts,
+    totalAttempts,
+    totalRegisteredUsers: allUsers.length,
     tierSummaries,
     rows,
+    userSummaries,
+    recentLogs: allLogs.slice(0, 20),
   };
-}
-
-/**
- * Exports user answer statistics to CSV formatted for Excel / Google Sheets.
- */
-export function exportAnswerStatsToCSV(): string {
-  const esc = (s: string) => `"${(s || '').replace(/"/g, '""')}"`;
-  const { rows } = getAnswerStatistics();
-
-  const headers = [
-    'Question ID',
-    'FRP Course',
-    'Financial Tier',
-    'Format',
-    'English Prompt',
-    'Filipino Translation',
-    'Correct Answer',
-    'Total Player Attempts',
-    'Correct Responses',
-    'Accuracy Rate (%)',
-    'Common Misconception / Trap',
-  ];
-
-  const lines = [headers.join(',')];
-
-  rows.forEach((r) => {
-    lines.push(
-      [
-        r.question.id,
-        `FRP ${r.question.course}`,
-        esc(r.tier),
-        esc(r.question.format),
-        esc(r.question.prompt),
-        esc(r.question.promptFilipino),
-        esc(r.question.answerLabel),
-        String(r.totalAttempts),
-        String(r.correctAnswers),
-        `${r.accuracyRate}%`,
-        esc(r.topMisconception),
-      ].join(','),
-    );
-  });
-
-  return '\uFEFF' + lines.join('\r\n');
 }

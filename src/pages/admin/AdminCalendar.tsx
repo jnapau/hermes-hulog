@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { scheduleRange, SCHEDULE_START, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
-import { exportAnswerStatsToCSV } from '../../lib/statistics';
 import { todayPH, addDays, formatLong, dayOfWeek, DAY_SHORT } from '../../lib/date';
 import { TIER_STYLE } from '../../data/types';
-import { Download, ChevronLeft, ChevronRight, Tag, BarChart3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Tag, BarChart3 } from 'lucide-react';
 
 export default function AdminCalendar() {
   const today = todayPH();
@@ -14,18 +13,6 @@ export default function AdminCalendar() {
   const days = useMemo(() => {
     return scheduleRange(startDate, addDays(startDate, daysCount - 1));
   }, [startDate, daysCount]);
-
-  const handleDownloadStatsCSV = () => {
-    const csv = exportAnswerStatsToCSV();
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `hulog-user-answer-stats-${startDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleShiftDays = (amount: number) => {
     const next = addDays(startDate, amount);
@@ -47,16 +34,10 @@ export default function AdminCalendar() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link
             to="/admin/statistics"
-            className="btn-ghost text-xs font-bold flex items-center gap-1.5 border-brand text-brand hover:bg-brand/5"
-          >
-            <BarChart3 className="h-3.5 w-3.5" /> View Answer Analytics
-          </Link>
-          <button
-            onClick={handleDownloadStatsCSV}
             className="btn-flame text-xs font-bold flex items-center gap-1.5 shadow-sm"
           >
-            <Download className="h-3.5 w-3.5" /> Export Answer Stats (CSV)
-          </button>
+            <BarChart3 className="h-3.5 w-3.5" /> View Live Answer Analytics
+          </Link>
         </div>
       </div>
 

@@ -1,16 +1,22 @@
 import { Link } from 'react-router-dom';
-import { QUESTIONS, ALL_FORMATS, ALL_TIERS } from '../../data/questions';
+import { ALL_FORMATS, ALL_TIERS } from '../../data/questions';
 import { COURSES } from '../../data/courses';
 import { getDaySchedule, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
 import { todayPH } from '../../lib/date';
 import { TIER_STYLE } from '../../data/types';
 import { HestiaMascot } from '../../components/HestiaMascot';
-import { Clock, ArrowRight, BarChart3, Layers } from 'lucide-react';
+import { Clock, ArrowRight, BarChart3, Layers, Users, TrendingUp } from 'lucide-react';
+import { useAllQuestions } from '../../lib/customQuestions';
+import { getAnswerStatistics } from '../../lib/statistics';
+import { useAuth } from '../../lib/users';
 
 export default function AdminOverview() {
   const today = todayPH();
   const scheduleToday = getDaySchedule(today);
-  const totalCards = QUESTIONS.length;
+  const allQuestions = useAllQuestions();
+  const { logs, users } = useAuth();
+  const stats = getAnswerStatistics();
+  const totalCards = allQuestions.length;
   const totalCourses = COURSES.length;
 
   return (
@@ -19,27 +25,27 @@ export default function AdminOverview() {
       <div className="rounded-3xl border border-hairline bg-white p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-6">
         <div>
           <span className="rounded-full bg-brand/10 px-2.5 py-1 text-2xs font-extrabold uppercase tracking-wider text-brand">
-            Curriculum Administration
+            Curriculum Administration & User Analytics
           </span>
           <h2 className="text-xl sm:text-2xl font-black text-ink mt-2">
-            Hulog Question Bank & Curriculum Monitor
+            Hulog Question Bank & Learning Monitor
           </h2>
           <p className="text-xs text-ink-muted mt-1 max-w-xl">
-            Track all {totalCards} daily micro-learning cards mapped to the 6 Financial Pyramid Tiers and FRP 101–108. Monitor national rotation dates, audit answer statistics, and inspect bilingual translations.
+            Track all {totalCards} daily micro-learning cards mapped to the 6 Financial Pyramid Tiers and FRP 101–108. Add custom questions, view live answer statistics from registered users, and inspect national schedules.
           </p>
 
           <div className="flex items-center gap-3 mt-4">
             <Link
-              to="/admin/statistics"
+              to="/admin/questions"
               className="btn-flame text-xs font-bold flex items-center gap-1.5 shadow-sm"
             >
-              <BarChart3 className="h-4 w-4" /> View Answer Analytics
+              Manage Questions & Add Game
             </Link>
             <Link
-              to="/admin/questions"
-              className="btn-ghost text-xs font-bold border-stone-300 text-ink hover:bg-stone-50"
+              to="/admin/statistics"
+              className="btn-ghost text-xs font-bold border-stone-300 text-ink hover:bg-stone-50 flex items-center gap-1.5"
             >
-              Manage Question Bank
+              <BarChart3 className="h-4 w-4 text-brand" /> Registered User Analytics
             </Link>
           </div>
         </div>
@@ -49,27 +55,31 @@ export default function AdminOverview() {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="card p-4">
+          <span className="text-[10px] font-bold uppercase text-ink-muted flex items-center gap-1">
+            <Users className="h-3 w-3 text-brand" /> Registered Users
+          </span>
+          <p className="text-2xl font-black text-brand mt-1">{stats.totalRegisteredUsers}</p>
+          <span className="text-[11px] text-ink-muted font-medium">Sample accounts</span>
+        </div>
+
+        <div className="card p-4">
+          <span className="text-[10px] font-bold uppercase text-ink-muted flex items-center gap-1">
+            <TrendingUp className="h-3 w-3 text-emerald-700" /> Answer Submissions
+          </span>
+          <p className="text-2xl font-black text-emerald-700 mt-1">{stats.totalAttempts}</p>
+          <span className="text-[11px] text-ink-muted font-medium">{stats.overallAccuracy}% overall accuracy</span>
+        </div>
+
+        <div className="card p-4">
           <span className="text-[10px] font-bold uppercase text-ink-muted">Total Questions</span>
-          <p className="text-2xl font-black text-brand mt-1">{totalCards}</p>
-          <span className="text-[11px] text-ink-muted font-medium">Full year curriculum</span>
+          <p className="text-2xl font-black text-cocoa mt-1">{totalCards}</p>
+          <span className="text-[11px] text-ink-muted font-medium">Curriculum + custom</span>
         </div>
 
         <div className="card p-4">
           <span className="text-[10px] font-bold uppercase text-ink-muted">Financial Tiers</span>
-          <p className="text-2xl font-black text-emerald-700 mt-1">{ALL_TIERS.length}</p>
-          <span className="text-[11px] text-ink-muted font-medium">Pyramid tiers mapped</span>
-        </div>
-
-        <div className="card p-4">
-          <span className="text-[10px] font-bold uppercase text-ink-muted">Active FRP Courses</span>
-          <p className="text-2xl font-black text-cocoa mt-1">{totalCourses}</p>
-          <span className="text-[11px] text-ink-muted font-medium">FRP 101 through 108</span>
-        </div>
-
-        <div className="card p-4">
-          <span className="text-[10px] font-bold uppercase text-ink-muted">Game Formats</span>
-          <p className="text-2xl font-black text-flame-deep mt-1">{ALL_FORMATS.length}</p>
-          <span className="text-[11px] text-ink-muted font-medium">Scam, Sort, Tama o Mali, etc.</span>
+          <p className="text-2xl font-black text-flame-deep mt-1">{ALL_TIERS.length}</p>
+          <span className="text-[11px] text-ink-muted font-medium">6 Pyramid tiers</span>
         </div>
       </div>
 

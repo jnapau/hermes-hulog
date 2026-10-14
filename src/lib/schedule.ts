@@ -1,19 +1,20 @@
 /**
  * The daily schedule — which 3 cards everyone gets on a given date.
  *
- * Fully deterministic (no database needed): the same date always gives
- * the same cards for every player, mapped across the 365-day year.
+ * Fully deterministic: the same date gives a uniform set of cards,
+ * mapped across the Philippine calendar year with support for custom admin cards.
  *
- * Rules (from the Hulog concept paper, "The Core Daily Loop"):
+ * Rules:
  *   Mon–Sat  → Card 1 "Daily Insight"     (new curriculum card)
- *              Card 2 "Spaced Review"     (spaced repetition of a card shown 1 / 3 / 7 days ago)
- *              Card 3 "Recommended"       (personalized slot / next curriculum card)
- *   Sunday   → Card 1 "Sunday Boss"       (Shock Simulator, FRP 108 — 52 unique weeks)
+ *              Card 2 "Spaced Review"     (spaced repetition card)
+ *              Card 3 "Recommended"       (personalized slot / next card)
+ *   Sunday   → Card 1 "Sunday Boss"       (Shock Simulator, FRP 108)
  *              Card 2 + 3 "Weekly Review" (spaced reinforcement of the week)
  */
-import { QUESTIONS, isBossCard } from '../data/questions';
+import { isBossCard } from '../data/questions';
 import type { CourseCode, Question } from '../data/types';
 import { addDays, dayOfWeek, diffDays, type ISODate } from './date';
+import { getAllQuestions } from './customQuestions';
 
 /** Day #1 of Hulog. Monday, October 12, 2026. */
 export const SCHEDULE_START: ISODate = '2026-10-12';
@@ -47,31 +48,33 @@ export interface DaySchedule {
   tags: string[];
 }
 
-// ── Build the weekday rotation: round-robin across FRP courses for variety ──
 const COURSE_ORDER: CourseCode[] = [101, 102, 103, 104, 105, 106, 107];
 
-function buildPool(): Question[] {
+export function getRotation(): Question[] {
+  const all = getAllQuestions();
   const byCourse = COURSE_ORDER.map((c) =>
-    QUESTIONS.filter((q) => q.course === c && !isBossCard(q)),
+    all.filter((q) => q.course === c && !isBossCard(q)),
   );
-  const longest = Math.max(...byCourse.map((l) => l.length));
+  const longest = Math.max(...byCourse.map((l) => l.length), 1);
   const pool: Question[] = [];
   for (let i = 0; i < longest; i++) {
     for (const list of byCourse) {
       if (list[i]) pool.push(list[i]);
     }
   }
-  return pool;
+  return pool.length > 0 ? pool : all;
 }
 
-export const ROTATION: Question[] = buildPool();
-export const BOSS_CARDS: Question[] = QUESTIONS.filter(isBossCard);
+export function getBossCards(): Question[] {
+  const all = getAllQuestions();
+  const boss = all.filter(isBossCard);
+  return boss.length > 0 ? boss : all;
+}
 
-const REVIEW_OFFSETS = [2, 6, 14]; // ≈ 1, 3 and 7 weekdays back (2 new cards per weekday)
+const REVIEW_OFFSETS = [2, 6, 14];
 
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 
-/** Number of non-Sunday days in [SCHEDULE_START, date). */
 function weekdaysBefore(date: ISODate): number {
   const days = diffDays(SCHEDULE_START, date);
   const fullWeeks = Math.floor(days / 7);
@@ -109,28 +112,30 @@ function seasonalTags(date: ISODate): string[] {
 export function getDaySchedule(date: ISODate): DaySchedule | null {
   const index = diffDays(SCHEDULE_START, date);
   if (index < 0) return null;
-  const L = ROTATION.length || 1;
+  const rotation = getRotation();
+  const bossCards = getBossCards();
+  const L = rotation.length || 1;
   const isSunday = dayOfWeek(date) === 0;
   const n = weekdaysBefore(date);
   let cards: ScheduledCard[];
 
   if (isSunday) {
-    const boss = BOSS_CARDS[mod(sundaysBefore(date), BOSS_CARDS.length)];
+    const boss = bossCards[mod(sundaysBefore(date), bossCards.length)];
     cards = [
       { question: boss, role: 'boss' },
-      { question: ROTATION[mod(2 * n - 2, L)], role: 'review' },
-      { question: ROTATION[mod(2 * n - 8, L)], role: 'review' },
+      { question: rotation[mod(2 * n - 2, L)], role: 'review' },
+      { question: rotation[mod(2 * n - 8, L)], role: 'review' },
     ];
   } else {
-    const newA = ROTATION[mod(2 * n, L)];
-    const newB = ROTATION[mod(2 * n + 1, L)];
+    const newA = rotation[mod(2 * n, L)];
+    const newB = rotation[mod(2 * n + 1, L)];
     const offset = REVIEW_OFFSETS[n % REVIEW_OFFSETS.length];
     let reviewIdx = 2 * n - offset;
     if (reviewIdx < 0) reviewIdx = 2 * n - 2;
     const review: ScheduledCard =
       reviewIdx >= 0
-        ? { question: ROTATION[mod(reviewIdx, L)], role: 'review' }
-        : { question: ROTATION[L - 1], role: 'new' };
+        ? { question: rotation[mod(reviewIdx, L)], role: 'review' }
+        : { question: rotation[L - 1], role: 'new' };
     cards = [
       { question: newA, role: 'new' },
       review,
@@ -151,7 +156,8 @@ export interface Appearance {
 /** Every appearance of every question between two dates (inclusive). */
 export function buildAppearanceIndex(from: ISODate, to: ISODate): Map<string, Appearance[]> {
   const map = new Map<string, Appearance[]>();
-  QUESTIONS.forEach((q) => map.set(q.id, []));
+  const all = getAllQuestions();
+  all.forEach((q) => map.set(q.id, []));
   const start = diffDays(SCHEDULE_START, from) < 0 ? SCHEDULE_START : from;
   const total = diffDays(start, to);
   for (let i = 0; i <= total; i++) {
