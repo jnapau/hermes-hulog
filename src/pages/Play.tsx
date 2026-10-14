@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Sparkles, BarChart3, Languages } from 'lucide-react';
 import { todayPH } from '../lib/date';
 import { getDaySchedule, ROLE_LABEL, ROLE_STYLE } from '../lib/schedule';
 import { recordPlay, completeHakbang, useProgress } from '../lib/progress';
 import { playClink, playSoft } from '../lib/sound';
 import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';
+import { TIER_STYLE } from '../data/types';
 
 export default function Play() {
   const navigate = useNavigate();
@@ -22,12 +23,13 @@ export default function Play() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [hakbangDone, setHakbangDone] = useState(false);
   const [droppingCoin, setDroppingCoin] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(true);
 
   if (!schedule) {
     return (
       <div className="mx-auto max-w-md p-6 text-center">
-        <p className="text-sm font-bold text-ink">Hindi pa nagsisimula ang Hulog schedule.</p>
-        <Link to="/" className="btn-flame mt-4">Bumalik sa Home</Link>
+        <p className="text-sm font-bold text-ink">The daily Hulog schedule has not yet started.</p>
+        <Link to="/" className="btn-flame mt-4">Return Home</Link>
       </div>
     );
   }
@@ -37,12 +39,12 @@ export default function Play() {
     return (
       <div className="mx-auto max-w-md p-6 text-center">
         <HestiaMascot pose="done" height={130} className="mx-auto mb-3" />
-        <h2 className="text-lg font-black text-ink">Nakahulog ka na ngayong araw!</h2>
+        <h2 className="text-lg font-black text-ink">You've completed today's drop!</h2>
         <p className="text-xs text-ink-muted mt-1 mb-4">
-          Bukas ulit para manatiling buhay ang Apoy ni Hestia.
+          Come back tomorrow to keep Hestia's flame glowing strong.
         </p>
         <Link to="/" className="btn-flame text-sm py-2.5">
-          Bumalik sa Alkansya
+          Return to Alkansya
         </Link>
       </div>
     );
@@ -50,6 +52,7 @@ export default function Play() {
 
   const currentScheduledCard = schedule.cards[cardIndex];
   const question = currentScheduledCard.question;
+  const tierStyle = TIER_STYLE[question.tier] || TIER_STYLE['Cash Management'];
 
   const handleSelectAnswer = (ansKey: string) => {
     if (showFeedback) return;
@@ -118,13 +121,13 @@ export default function Play() {
     return (
       <div className="mx-auto max-w-md px-4 py-8 anim-pop">
         <div className="card p-6 text-center border-2 border-amber-300">
-          <Alkansya fillPercentage={70} animated={droppingCoin} />
+          <Alkansya fillPercentage={75} animated={droppingCoin} />
 
           <h2 className="text-2xl font-black text-ink mt-3">
-            {baryaWon === 3 ? 'Perpekto! +3 barya' : `Mahusay! +${baryaWon} barya`}
+            {baryaWon === 3 ? 'Perfect! +3 coins' : `Well Done! +${baryaWon} coins`}
           </h2>
           <p className="text-xs text-ink-muted mt-1">
-            Naihulog sa iyong bamboo alkansya para sa darating na Linggo Basag.
+            Deposited into your bamboo alkansya for the upcoming Sunday break.
           </p>
 
           {/* 3 Results Dots */}
@@ -144,22 +147,22 @@ export default function Play() {
           {/* Isang Hakbang Action Bridge */}
           <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left my-4">
             <div className="flex items-center gap-1.5 text-xs font-extrabold text-flame-deep uppercase tracking-wider">
-              <Sparkles className="h-4 w-4" /> Isang Hakbang (+5 Ginto)
+              <Sparkles className="h-4 w-4" /> One Step / Isang Hakbang (+5 Gold Coins)
             </div>
             <p className="text-xs font-semibold text-ink mt-1.5 leading-snug">
-              {schedule.cards[2]?.question.hakbang || 'I-check ang iyong emergency buffer number.'}
+              {schedule.cards[2]?.question.hakbang || 'Review your monthly essential expense baseline.'}
             </p>
 
             {!hakbangDone ? (
               <button
                 onClick={handleHakbangClaim}
-                className="mt-3 w-full rounded-xl bg-cocoa py-2 text-xs font-bold text-amber-100 hover:bg-cocoa/90 transition shadow-sm"
+                className="mt-3 w-full rounded-xl bg-cocoa py-2.5 text-xs font-bold text-amber-100 hover:bg-cocoa/90 transition shadow-sm"
               >
-                Gagawin ko / Natapos ko na (+5 Ginto)
+                I will do this / Completed (+5 Gold Coins)
               </button>
             ) : (
-              <div className="mt-3 flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 py-1.5 rounded-lg">
-                <Check className="h-4 w-4" /> +5 Gintong Barya na-credit!
+              <div className="mt-3 flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 py-2 rounded-xl">
+                <Check className="h-4 w-4" /> +5 Gold Coins credited to your collection!
               </div>
             )}
           </div>
@@ -168,7 +171,7 @@ export default function Play() {
             onClick={() => navigate('/')}
             className="btn-flame w-full py-3 text-sm mt-2"
           >
-            Bumalik sa Aking Alkansya
+            Back to My Alkansya
           </button>
         </div>
       </div>
@@ -188,7 +191,7 @@ export default function Play() {
           <button
             onClick={() => navigate('/')}
             className="rounded-lg p-1.5 text-ink-muted hover:bg-black/5 transition"
-            title="Exit"
+            title="Exit Session"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -202,49 +205,77 @@ export default function Play() {
               {ROLE_LABEL[currentScheduledCard.role]}
             </span>
             <span className="text-xs font-extrabold text-cocoa">
-              {cardIndex + 1} / 3
+              {cardIndex + 1} of 3
             </span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden mb-4">
+        <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden mb-3">
           <div
             className="h-full bg-flame transition-all duration-300"
             style={{ width: `${((cardIndex + (showFeedback ? 1 : 0)) / 3) * 100}%` }}
           />
         </div>
 
-        {/* Question Header */}
-        <div className="text-center mb-3">
-          <h2 className="text-sm font-extrabold text-cocoa uppercase tracking-wide">
+        {/* Question Header & Explicit Tier Label */}
+        <div className="text-center mb-3 flex flex-col items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide border shadow-2xs ${tierStyle.pill}`}
+            >
+              Tier: {question.tier}
+            </span>
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-ink-muted">
+              FRP {question.course}
+            </span>
+          </div>
+          <h2 className="text-sm font-black text-ink uppercase tracking-wide">
             {question.format}
           </h2>
-          <span className="text-[10px] font-semibold text-ink-muted">
-            FRP {question.course} · Tier {question.format}
-          </span>
         </div>
 
-        {/* Prompt Card / Simulated chat bubble */}
-        <div className="card p-5 mb-4 shadow-sm border border-amber-200/90 relative">
-          <p className="text-sm font-bold text-ink leading-relaxed">
-            {question.prompt}
-          </p>
+        {/* Question Prompt Card */}
+        <div className="card p-5 mb-3 shadow-sm border border-amber-200/90 relative">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-bold text-ink leading-relaxed">
+              {question.prompt}
+            </p>
+            <button
+              onClick={() => setShowTranslation(!showTranslation)}
+              className="shrink-0 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-amber-100/50 transition"
+              title="Toggle Filipino Translation"
+            >
+              <Languages className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Filipino / Tagalog Translation of the Question */}
+          {showTranslation && question.promptFilipino && (
+            <div className="mt-3 pt-3 border-t border-amber-100 bg-amber-50/70 -mx-2 -mb-2 p-3 rounded-xl border border-amber-200/60">
+              <div className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
+                <span>🇵🇭 Salin sa Filipino (Translation):</span>
+              </div>
+              <p className="text-xs font-semibold text-cocoa leading-relaxed italic">
+                "{question.promptFilipino}"
+              </p>
+            </div>
+          )}
 
           {/* Mascot pose listening */}
-          <div className="absolute -bottom-3 right-3 opacity-30 pointer-events-none">
-            <HestiaMascot pose="thinking" height={50} />
+          <div className="absolute -bottom-3 right-3 opacity-20 pointer-events-none">
+            <HestiaMascot pose="thinking" height={42} />
           </div>
         </div>
 
         {/* Interactive Play Formats */}
         {/* 1. SCAM O LEGIT? */}
         {question.format === 'Scam o Legit?' && (
-          <div className="grid grid-cols-2 gap-3 my-4">
+          <div className="grid grid-cols-2 gap-3 my-3">
             <button
               onClick={() => handleSelectAnswer('SCAM')}
               disabled={showFeedback}
-              className={`rounded-2xl border-2 py-4 text-center font-black text-base shadow-btn transition active:translate-y-[2px] ${
+              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'SCAM'
                   ? 'border-scam bg-scam text-white'
                   : 'border-scam/60 bg-red-50 text-scam hover:bg-red-100'
@@ -255,7 +286,7 @@ export default function Play() {
             <button
               onClick={() => handleSelectAnswer('LEGIT')}
               disabled={showFeedback}
-              className={`rounded-2xl border-2 py-4 text-center font-black text-base shadow-btn transition active:translate-y-[2px] ${
+              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'LEGIT'
                   ? 'border-legit bg-legit text-white'
                   : 'border-legit/60 bg-emerald-50 text-legit hover:bg-emerald-100'
@@ -268,33 +299,33 @@ export default function Play() {
 
         {/* 2. TAMA O MALI? */}
         {question.format === 'Tama o Mali?' && (
-          <div className="grid grid-cols-2 gap-3 my-4">
+          <div className="grid grid-cols-2 gap-3 my-3">
             <button
               onClick={() => handleSelectAnswer('TAMA')}
               disabled={showFeedback}
-              className={`rounded-2xl border-2 py-4 text-center font-black text-base shadow-btn transition active:translate-y-[2px] ${
+              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'TAMA'
                   ? 'border-emerald-600 bg-emerald-600 text-white'
                   : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
               }`}
             >
-              TAMA
+              TRUE (Tama)
             </button>
             <button
               onClick={() => handleSelectAnswer('MALI')}
               disabled={showFeedback}
-              className={`rounded-2xl border-2 py-4 text-center font-black text-base shadow-btn transition active:translate-y-[2px] ${
+              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'MALI'
                   ? 'border-rose-600 bg-rose-600 text-white'
                   : 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
               }`}
             >
-              MALI
+              FALSE (Mali)
             </button>
           </div>
         )}
 
-        {/* 3. MULTIPLE CHOICE */}
+        {/* 3. MULTIPLE CHOICE / LINGGO BOSS */}
         {question.kind === 'choice' && question.options && (
           <div className="space-y-2.5 my-3">
             {question.options.map((opt) => (
@@ -308,8 +339,15 @@ export default function Play() {
                     : 'border-hairline bg-white text-ink hover:bg-surface-sunk'
                 }`}
               >
-                <span>{opt.text}</span>
-                <span className="h-5 w-5 rounded-full border border-stone-300 flex items-center justify-center text-[10px]">
+                <div className="pr-2">
+                  <span>{opt.text}</span>
+                  {opt.textFilipino && opt.textFilipino !== opt.text && (
+                    <span className="block text-[11px] font-normal text-ink-muted italic mt-0.5">
+                      {opt.textFilipino}
+                    </span>
+                  )}
+                </div>
+                <span className="h-5 w-5 shrink-0 rounded-full border border-stone-300 flex items-center justify-center text-[10px]">
                   {opt.key}
                 </span>
               </button>
@@ -326,7 +364,14 @@ export default function Play() {
                   key={item.key}
                   className="rounded-xl border border-hairline bg-white p-2.5 shadow-xs flex flex-col gap-1.5"
                 >
-                  <span className="text-xs font-bold text-ink">{item.text}</span>
+                  <div>
+                    <span className="text-xs font-bold text-ink">{item.text}</span>
+                    {item.textFilipino && item.textFilipino !== item.text && (
+                      <span className="text-[11px] text-ink-muted italic block">
+                        {item.textFilipino}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {question.categories?.map((cat) => (
                       <button
@@ -353,7 +398,7 @@ export default function Play() {
                 disabled={!sortReady}
                 className="btn-flame w-full py-3 text-xs mt-2 disabled:opacity-50"
               >
-                I-check ang Sort
+                Submit Category Sort
               </button>
             )}
           </div>
@@ -372,22 +417,45 @@ export default function Play() {
               {results[results.length - 1] ? '✓' : '✕'}
             </div>
             <h3 className="font-extrabold text-xs text-ink">
-              {results[results.length - 1] ? 'Tama! +1 barya' : 'Hindi sakto — aralin natin'}
+              {results[results.length - 1] ? 'Correct! +1 coin' : 'Not quite — here is what to know'}
             </h3>
           </div>
 
           <p className="text-xs font-bold text-cocoa mb-1">
-            Tamang Sagot: {question.answerLabel}
+            Correct Answer: {question.answerLabel}
           </p>
           <p className="text-xs text-ink-muted leading-relaxed">
             {question.why}
           </p>
 
+          {/* Tanong ng Bayan: Anonymous Community Statistics */}
+          {question.communityStats && (
+            <div className="my-2.5 rounded-xl border border-sky-200 bg-sky-50/70 p-2.5 text-left">
+              <div className="flex items-center justify-between text-[10px] font-extrabold text-sky-800 uppercase tracking-wider mb-1">
+                <span className="flex items-center gap-1">
+                  <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Tanong ng Bayan (User Statistics)
+                </span>
+                <span>{question.communityStats.correctPct}% answered correctly</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-sky-200 overflow-hidden mb-1">
+                <div
+                  className="h-full bg-sky-600 transition-all duration-500 rounded-full"
+                  style={{ width: `${question.communityStats.correctPct}%` }}
+                />
+              </div>
+              {question.communityStats.topMisconception && (
+                <p className="text-[11px] text-sky-900 font-medium leading-tight">
+                  💡 <strong>Common trap:</strong> {question.communityStats.topMisconception}
+                </p>
+              )}
+            </div>
+          )}
+
           <button
             onClick={handleNextCard}
-            className="btn-flame w-full py-2.5 text-xs font-bold mt-3"
+            className="btn-flame w-full py-2.5 text-xs font-bold mt-2"
           >
-            {cardIndex < 2 ? 'Susunod na Card →' : 'Tingnan ang Resulta 🏆'}
+            {cardIndex < 2 ? 'Next Card →' : 'View Session Results 🏆'}
           </button>
         </div>
       )}

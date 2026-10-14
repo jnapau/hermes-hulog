@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, HelpCircle, Calendar, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, HelpCircle, Calendar, BarChart3, ArrowLeft } from 'lucide-react';
 import { HestiaMascot } from '../../components/HestiaMascot';
 
 const PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'hestia2026';
@@ -41,17 +41,17 @@ export default function AdminLayout() {
               onChange={(e) => setPin(e.target.value)}
               className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold focus:border-brand focus:outline-none"
             />
-            {err && <p className="text-[11px] font-bold text-rose-500">Maling passcode. Subukan muli.</p>}
+            {err && <p className="text-[11px] font-bold text-rose-500">Incorrect passcode. Please try again.</p>}
             <button
               type="submit"
               className="w-full rounded-xl bg-brand py-2 text-xs font-bold text-white hover:bg-brand-light transition shadow-sm"
             >
-              Buksan ang Admin
+              Access Admin Portal
             </button>
           </form>
 
           <Link to="/" className="mt-4 inline-block text-[11px] text-ink-muted hover:underline">
-            ← Bumalik sa User Website
+            ← Return to Main WebApp
           </Link>
         </div>
       </div>
@@ -65,23 +65,23 @@ export default function AdminLayout() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <Link to="/" className="text-xs font-bold text-ink-muted hover:text-ink flex items-center gap-1">
-              <ArrowLeft className="h-4 w-4" /> Hulog WebApp
+              <ArrowLeft className="h-4 w-4" /> Hulog App
             </Link>
             <div className="h-4 w-[1px] bg-hairline" />
             <h1 className="text-sm font-extrabold text-ink flex items-center gap-1.5">
               <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-black text-brand">
                 ADMIN
               </span>
-              Curriculum Bank
+              Curriculum & Analytics
             </h1>
           </div>
 
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 sm:gap-2">
             <NavLink
               to="/admin"
               end
               className={({ isActive }) =>
-                `rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                `rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
                   isActive ? 'bg-brand text-white shadow-xs' : 'text-ink-muted hover:bg-surface-sunk'
                 }`
               }
@@ -93,25 +93,37 @@ export default function AdminLayout() {
             <NavLink
               to="/admin/questions"
               className={({ isActive }) =>
-                `rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                `rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
                   isActive ? 'bg-brand text-white shadow-xs' : 'text-ink-muted hover:bg-surface-sunk'
                 }`
               }
             >
               <HelpCircle className="h-3.5 w-3.5" />
-              <span>Question Bank</span>
+              <span>Questions</span>
             </NavLink>
 
             <NavLink
               to="/admin/calendar"
               className={({ isActive }) =>
-                `rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                `rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
                   isActive ? 'bg-brand text-white shadow-xs' : 'text-ink-muted hover:bg-surface-sunk'
                 }`
               }
             >
               <Calendar className="h-3.5 w-3.5" />
-              <span>Calendar Schedule</span>
+              <span>Calendar</span>
+            </NavLink>
+
+            <NavLink
+              to="/admin/statistics"
+              className={({ isActive }) =>
+                `rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                  isActive ? 'bg-brand text-white shadow-xs' : 'text-ink-muted hover:bg-surface-sunk'
+                }`
+              }
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-amber-300" />
+              <span>Answer Analytics</span>
             </NavLink>
           </nav>
         </div>

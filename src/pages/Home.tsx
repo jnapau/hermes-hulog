@@ -40,7 +40,7 @@ export default function Home() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-100/70 px-3.5 py-1.5 text-xs font-bold text-cocoa shadow-xs">
           <Flame className={`h-4 w-4 text-flame-deep ${flame.streak > 0 ? 'anim-flicker fill-amber-500' : ''}`} />
-          <span>{flame.streak} araw na tuloy-tuloy</span>
+          <span>{flame.streak === 1 ? '1 day streak' : `${flame.streak}-day streak`}</span>
         </div>
 
         <div className="text-right">
@@ -49,7 +49,7 @@ export default function Home() {
       </div>
 
       {/* Main Sanctuary Card */}
-      <div className="card p-6 flex flex-col items-center relative overflow-hidden bg-gradient-to-b from-white via-cream to-cream-deep/40">
+      <div className="card p-6 flex flex-col items-center relative overflow-hidden bg-gradient-to-b from-white via-cream to-cream-deep/40 shadow-sm border border-amber-200/70">
         {/* Subtle decorative glow */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
 
@@ -74,10 +74,10 @@ export default function Home() {
         {/* Alkansya Fill status */}
         <div className="text-center mt-2 mb-4">
           <p className="text-xs font-extrabold text-cocoa">
-            {currentWeekBarya} barya naipon ngayong linggo
+            {currentWeekBarya} {currentWeekBarya === 1 ? 'coin' : 'coins'} saved this week
           </p>
           <p className="text-[11px] text-ink-muted">
-            {dayOfWeek(today) === 0 ? 'Araw ng Basag ngayon!' : `${7 - dayOfWeek(today)} araw bago ang Linggo Basag`}
+            {dayOfWeek(today) === 0 ? 'Today is Alkansya Break Day!' : `${7 - dayOfWeek(today)} days until Sunday Alkansya Break`}
           </p>
         </div>
 
@@ -85,19 +85,19 @@ export default function Home() {
         {!playedToday ? (
           <Link
             to="/play"
-            className="btn-flame w-full max-w-xs text-center flex items-center justify-center gap-2 group"
+            className="btn-flame w-full max-w-xs text-center flex items-center justify-center gap-2 group shadow-md"
           >
             <Play className="h-5 w-5 fill-cocoa group-hover:scale-110 transition-transform" />
-            <span>Maghulog ngayon · 60 seg</span>
+            <span>Drop a coin today · 60s</span>
           </Link>
         ) : (
           <div className="w-full max-w-xs space-y-2">
-            <div className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800 flex items-center justify-center gap-2">
+            <div className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800 flex items-center justify-center gap-2 shadow-xs">
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              <span>Tapos na ang hulog mo ngayong araw!</span>
+              <span>You've completed your daily drop!</span>
             </div>
             <p className="text-center text-xs font-semibold text-ink-muted">
-              Bukas ulit! Isang hulog bawat araw.
+              See you tomorrow! One drop each day.
             </p>
           </div>
         )}
@@ -106,16 +106,16 @@ export default function Home() {
         {readyToBasag && (
           <div className="mt-4 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-flame p-4 text-center shadow-md animate-bounce">
             <h4 className="font-extrabold text-cocoa text-sm flex items-center justify-center gap-1.5">
-              <Sparkles className="h-4 w-4" /> Buksan ang Alkansya! (Basag)
+              <Sparkles className="h-4 w-4" /> Break the Alkansya! (Sunday Basag)
             </h4>
             <p className="text-xs text-cocoa/90 my-1">
-              Nakaipon ka buong linggo. Kunin ang iyong espesyal na collectible!
+              You saved consistently all week. Reveal your special cultural reward!
             </p>
             <button
               onClick={handleBasag}
               className="mt-2 rounded-xl bg-cocoa px-4 py-2 text-xs font-bold text-amber-200 hover:bg-cocoa/90 shadow transition"
             >
-              Basagin ang Alkansya 🎋
+              Break the Alkansya 🎋
             </button>
           </div>
         )}
@@ -126,17 +126,22 @@ export default function Home() {
             <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center border-4 border-amber-300 shadow-2xl">
               <div className="text-5xl my-2">{COLLECTIBLE_BY_ID[basagReward].emoji}</div>
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800">
-                Bagong Collectible!
+                New Cultural Collectible!
               </span>
-              <h3 className="text-lg font-black text-ink mt-2">{COLLECTIBLE_BY_ID[basagReward].name}</h3>
-              <p className="text-xs text-ink-muted mt-1 mb-4 leading-relaxed">
-                {COLLECTIBLE_BY_ID[basagReward].blurb}
+              <h3 className="text-lg font-black text-ink mt-2">
+                {COLLECTIBLE_BY_ID[basagReward].nameFilipino}
+              </h3>
+              <p className="text-xs font-bold text-cocoa">
+                {COLLECTIBLE_BY_ID[basagReward].nameEnglish}
+              </p>
+              <p className="text-xs text-ink-muted mt-2 mb-4 leading-relaxed">
+                {COLLECTIBLE_BY_ID[basagReward].culturalStory}
               </p>
               <button
                 onClick={() => setBasagReward(null)}
                 className="btn-flame w-full py-2.5 text-sm"
               >
-                I-save sa Koleksyon ✨
+                Place on Collection Shelf ✨
               </button>
             </div>
           </div>
@@ -145,7 +150,7 @@ export default function Home() {
         {/* Week Day Pills */}
         <div className="mt-6 w-full border-t border-[#F0E3CC] pt-4">
           <p className="text-center text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-2">
-            Lingguhang Hulog (Mon - Sun)
+            Weekly Drops (Mon - Sun)
           </p>
           <div className="grid grid-cols-7 gap-1 text-center">
             {weekDays.map((dateStr, idx) => {
@@ -176,13 +181,6 @@ export default function Home() {
             })}
           </div>
         </div>
-      </div>
-
-      {/* Quick Footnote on Privacy */}
-      <div className="mt-4 text-center">
-        <p className="text-[11px] text-ink-muted">
-          🔒 <strong>100% Pribado:</strong> Walang ibang makakakita ng iyong scores at alkansya.
-        </p>
       </div>
     </div>
   );

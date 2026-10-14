@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
-import { scheduleRange, scheduleToCSV, SCHEDULE_START } from '../../lib/schedule';
+import { Link } from 'react-router-dom';
+import { scheduleRange, SCHEDULE_START, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
+import { exportAnswerStatsToCSV } from '../../lib/statistics';
 import { todayPH, addDays, formatLong, dayOfWeek, DAY_SHORT } from '../../lib/date';
-import { Download, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import { TIER_STYLE } from '../../data/types';
+import { Download, ChevronLeft, ChevronRight, Tag, BarChart3 } from 'lucide-react';
 
 export default function AdminCalendar() {
   const today = todayPH();
@@ -12,13 +15,13 @@ export default function AdminCalendar() {
     return scheduleRange(startDate, addDays(startDate, daysCount - 1));
   }, [startDate, daysCount]);
 
-  const handleDownloadCSV = () => {
-    const csv = scheduleToCSV(days);
+  const handleDownloadStatsCSV = () => {
+    const csv = exportAnswerStatsToCSV();
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `hulog-schedule-${startDate}-${daysCount}days.csv`);
+    link.setAttribute('download', `hulog-user-answer-stats-${startDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -35,18 +38,26 @@ export default function AdminCalendar() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-ink">Calendar & Show Dates</h2>
+          <h2 className="text-xl font-black text-ink">Curriculum Calendar & Show Dates</h2>
           <p className="text-xs text-ink-muted">
-            Pang-araw-araw na rotasyon ng 3 cards sa buong Pilipinas.
+            Daily deterministic rotation of 3 micro-learning cards across all 365 days of the Philippine calendar year.
           </p>
         </div>
 
-        <button
-          onClick={handleDownloadCSV}
-          className="btn-ghost text-xs font-bold self-start sm:self-auto flex items-center gap-1.5 border-brand text-brand hover:bg-brand/5"
-        >
-          <Download className="h-3.5 w-3.5" /> I-export sa CSV (Excel)
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            to="/admin/statistics"
+            className="btn-ghost text-xs font-bold flex items-center gap-1.5 border-brand text-brand hover:bg-brand/5"
+          >
+            <BarChart3 className="h-3.5 w-3.5" /> View Answer Analytics
+          </Link>
+          <button
+            onClick={handleDownloadStatsCSV}
+            className="btn-flame text-xs font-bold flex items-center gap-1.5 shadow-sm"
+          >
+            <Download className="h-3.5 w-3.5" /> Export Answer Stats (CSV)
+          </button>
+        </div>
       </div>
 
       {/* Date Range Navigation Controls */}
@@ -90,95 +101,112 @@ export default function AdminCalendar() {
             onChange={(e) => setDaysCount(Number(e.target.value))}
             className="rounded-xl border border-stone-200 px-2.5 py-1 text-xs font-bold text-ink focus:border-brand focus:outline-none"
           >
-            <option value={14}>14 araw (2 linggo)</option>
-            <option value={30}>30 araw (1 buwan)</option>
-            <option value={60}>60 araw (2 buwan)</option>
-            <option value={90}>90 araw (1 quarter)</option>
+            <option value={14}>14 days (2 weeks)</option>
+            <option value={30}>30 days (1 month)</option>
+            <option value={90}>90 days (1 quarter)</option>
+            <option value={180}>180 days (6 months)</option>
+            <option value={365}>365 days (Full Year Curriculum)</option>
           </select>
         </div>
       </div>
 
-      {/* Days Table / Grid */}
-      <div className="space-y-3">
-        {days.map((day) => {
-          const isToday = day.date === today;
-          const dow = dayOfWeek(day.date);
-          const isSunday = dow === 0;
-
+      {/* Days Schedule List */}
+      <div className="space-y-4">
+        {days.map((d) => {
+          const isToday = d.date === today;
           return (
             <div
-              key={day.date}
-              className={`card p-4 border transition ${
-                isToday ? 'border-brand ring-2 ring-brand/20 bg-blue-50/20' : isSunday ? 'border-amber-300 bg-amber-50/20' : ''
+              key={d.date}
+              className={`card p-4 space-y-3 transition ${
+                isToday ? 'border-2 border-brand bg-brand/5 shadow-xs' : ''
               }`}
             >
               {/* Day Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black ${
-                      isToday
-                        ? 'bg-brand text-white'
-                        : isSunday
-                        ? 'bg-amber-400 text-cocoa'
-                        : 'bg-stone-200 text-ink-muted'
+                    className={`rounded-lg px-2.5 py-1 text-xs font-black ${
+                      isToday ? 'bg-brand text-white' : 'bg-stone-200 text-cocoa'
                     }`}
                   >
-                    {DAY_SHORT[dow]}
+                    Hulog #{d.hulogNumber}
                   </span>
-                  <h3 className="text-xs font-black text-ink">
-                    {formatLong(day.date)} {isToday && '(Ngayon)'}
-                  </h3>
-                  <span className="text-[10px] font-extrabold text-ink-muted">
-                    · Hulog #{day.hulogNumber}
-                  </span>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-ink">
+                      {formatLong(d.date)} ({DAY_SHORT[dayOfWeek(d.date)]})
+                    </h3>
+                  </div>
                 </div>
 
                 {/* Seasonal Tags */}
-                {day.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {day.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 flex items-center gap-1"
-                      >
-                        <Tag className="h-2.5 w-2.5" /> {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {d.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-extrabold text-amber-900 flex items-center gap-1"
+                    >
+                      <Tag className="h-2.5 w-2.5" /> {t}
+                    </span>
+                  ))}
+                  {d.isSunday && (
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-2xs font-black text-rose-800">
+                      Sunday Boss & Basag Day
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* 3 Scheduled Cards for this Day */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                {day.cards.map((c, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border border-stone-200/90 bg-white p-3 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-brand">
-                          Slot {idx + 1}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {d.cards.map((c, slotIdx) => {
+                  const style = TIER_STYLE[c.question.tier] || TIER_STYLE['Cash Management'];
+                  return (
+                    <div
+                      key={slotIdx}
+                      className="rounded-2xl border border-stone-200 bg-white p-3.5 flex flex-col justify-between shadow-2xs"
+                    >
+                      <div>
+                        {/* Role & Tier Header */}
+                        <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-2xs font-extrabold ${
+                              ROLE_STYLE[c.role]
+                            }`}
+                          >
+                            Slot {slotIdx + 1} · {ROLE_LABEL[c.role]}
+                          </span>
+                          <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${style.pill}`}>
+                            {c.question.tier}
+                          </span>
+                        </div>
+
+                        {/* Question ID & Format */}
+                        <div className="flex items-center justify-between text-2xs font-bold text-ink-muted mb-1">
+                          <span>{c.question.id}</span>
+                          <span>{c.question.format}</span>
+                        </div>
+
+                        {/* Prompt */}
+                        <p className="text-xs font-bold text-ink leading-snug line-clamp-2">
+                          {c.question.prompt}
+                        </p>
+                        <p className="text-[11px] text-ink-muted italic line-clamp-1 mt-0.5">
+                          🇵🇭 {c.question.promptFilipino}
+                        </p>
+                      </div>
+
+                      {/* Answer & Community Benchmark */}
+                      <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between text-2xs">
+                        <span className="font-extrabold text-cocoa line-clamp-1">
+                          Ans: {c.question.answerLabel}
                         </span>
-                        <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold text-ink-muted uppercase">
-                          {c.role}
+                        <span className="text-sky-700 font-bold shrink-0">
+                          {c.question.communityStats.correctPct}% acc
                         </span>
                       </div>
-                      <h4 className="text-xs font-black text-ink">{c.question.format}</h4>
-                      <p className="text-[11px] text-ink-muted mt-1 line-clamp-2 leading-tight">
-                        {c.question.prompt}
-                      </p>
                     </div>
-
-                    <div className="mt-2 pt-2 border-t border-stone-100 flex items-center justify-between text-[10px]">
-                      <span className="font-extrabold text-cocoa">{c.question.id}</span>
-                      <span className="font-bold text-emerald-700 truncate max-w-[140px]">
-                        {c.question.answerLabel}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

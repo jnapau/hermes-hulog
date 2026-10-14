@@ -159,16 +159,16 @@ export function flameInfo(p: Progress, today: ISODate): FlameInfo {
     return {
       state: 'unang-hulog',
       streak: 0,
-      title: 'Unang Hulog',
-      message: 'Tara, simulan natin ang unang hulog mo. Isang minuto lang!',
+      title: 'First Drop',
+      message: 'Welcome! Ready for your first daily drop? Takes just 60 seconds.',
     };
   }
   if (p.plays[today]) {
     return {
       state: 'apoy',
       streak,
-      title: 'Apoy',
-      message: `Maliwanag ang apoy! ${streak} araw ka nang tuloy-tuloy.`,
+      title: 'Hearth Flame Lit',
+      message: `Your flame is burning bright! ${streak} days in a row.`,
     };
   }
   const yesterday = addDays(today, -1);
@@ -176,16 +176,16 @@ export function flameInfo(p: Progress, today: ISODate): FlameInfo {
     return {
       state: 'apoy-dim',
       streak,
-      title: 'Naghihintay ang Apoy',
-      message: 'Mainit pa ang kape? Isang hulog lang muna para sa sarili mo. ☕',
+      title: 'Awaiting Today’s Drop',
+      message: 'Fresh coffee ready? Take 60 seconds for your daily money habit. ☕',
     };
   }
   if (p.restDays.includes(yesterday)) {
     return {
       state: 'pahinga',
       streak,
-      title: 'Pahinga',
-      message: 'Nagpahinga ka kahapon. Karapat-dapat \u2019yan. Tuloy ang laban.',
+      title: 'Rest Day Protected',
+      message: 'Rest day protected by your token. Well-deserved—let’s keep going!',
     };
   }
   const last = dates[dates.length - 1];
@@ -194,23 +194,23 @@ export function flameInfo(p: Progress, today: ISODate): FlameInfo {
     return {
       state: 'baga',
       streak,
-      title: 'Baga',
-      message: 'Baga pa \u2019yan, hindi pa patay. Isang hulog lang ngayon, sisiklab ulit!',
+      title: 'Glowing Embers',
+      message: 'Your embers are still warm! One quick drop today reignites the flame.',
     };
   }
   if (missed >= 2 && p.restTokens >= missed - 1) {
     return {
       state: 'pahinga',
       streak: currentStreakWithTokens(p, today, missed),
-      title: 'Pahinga',
-      message: `Protektado ng ${missed - 1} Pahinga token ang apoy mo. Tuloy ang laban!`,
+      title: 'Pahinga Rest Shield',
+      message: `Shielded by ${missed - 1} Pahinga rest token(s). Streak preserved!`,
     };
   }
   return {
     state: 'bagong-simula',
     streak: 0,
-    title: 'Bagong Simula',
-    message: 'Maligayang pagbabalik! Kahit kailan, puwedeng magsimula muli.',
+    title: 'Fresh Start',
+    message: 'Welcome back! Every day is an opportunity to rebuild your streak.',
   };
 }
 

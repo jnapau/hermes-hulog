@@ -36,7 +36,7 @@ export default function PlayerLayout() {
             }
           >
             <Sparkles className="h-5 w-5" />
-            <span>Koleksyon</span>
+            <span>Collection</span>
           </NavLink>
 
           <NavLink
@@ -48,7 +48,7 @@ export default function PlayerLayout() {
             }
           >
             <SettingsIcon className="h-5 w-5" />
-            <span>Ritwal</span>
+            <span>Ritual</span>
           </NavLink>
         </div>
       </nav>

@@ -21,7 +21,7 @@ export default function Settings() {
   };
 
   const handleReset = () => {
-    if (confirm('Sigurado ka ba? Buburahin nito ang iyong mga nasagutan at babalik sa Day 1.')) {
+    if (confirm('Are you sure you want to reset your local progress? This will reset your streak and coin counts.')) {
       resetProgress();
     }
   };
@@ -30,16 +30,16 @@ export default function Settings() {
     <div className="mx-auto max-w-md px-4 py-6 sm:px-6">
       <div className="text-center mb-6">
         <HestiaMascot pose="idle" height={100} className="mx-auto mb-2" />
-        <h1 className="text-xl font-black text-ink">Aking Ritwal & Settings</h1>
+        <h1 className="text-xl font-black text-ink">Daily Ritual & Settings</h1>
         <p className="text-xs text-ink-muted">
-          I-set ang iyong oras para sa magiliw na paalala ni Hestia.
+          Anchor your daily financial habit to your morning routine.
         </p>
       </div>
 
       {/* Personal Rank Card */}
-      <div className="card p-4 mb-4 border-amber-200 bg-white">
+      <div className="card p-4 mb-4 border-amber-200 bg-white shadow-xs">
         <span className="text-[10px] uppercase font-bold text-ink-muted tracking-wider">
-          Kasalukuyang Ranggo
+          Current Resilience Rank
         </span>
         <div className="flex items-center justify-between mt-1">
           <div>
@@ -47,25 +47,25 @@ export default function Settings() {
               {current?.name || 'Baguhan'} ({current?.en || 'Beginner'})
             </h3>
             <p className="text-[11px] text-ink-muted">
-              {daysPlayed} Hulog days natapos
+              {daysPlayed} daily drops completed
             </p>
           </div>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800 border border-amber-300">
             Tier {current ? 1 : 0}
           </span>
         </div>
         {next && (
-          <p className="mt-2 text-[11px] text-emerald-800 bg-emerald-50 rounded-lg p-2 font-medium">
-            🎯 Susunod na antas: <strong>{next.name}</strong> sa {next.days} days ({next.days - daysPlayed} araw pa).
+          <p className="mt-2 text-[11px] text-emerald-800 bg-emerald-50 rounded-xl p-2.5 font-medium border border-emerald-200">
+            🎯 Next Milestone: <strong>{next.name} ({next.en})</strong> at {next.days} days ({next.days - daysPlayed} days remaining).
           </p>
         )}
       </div>
 
       {/* Habit Stacking Form */}
-      <form onSubmit={handleSave} className="card p-5 space-y-4 bg-white">
+      <form onSubmit={handleSave} className="card p-5 space-y-4 bg-white shadow-xs">
         <div>
           <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-            <Bell className="h-4 w-4 text-flame" /> Oras ng Daily Check-in
+            <Bell className="h-4 w-4 text-flame" /> Daily Check-in Time
           </label>
           <input
             type="time"
@@ -77,23 +77,23 @@ export default function Settings() {
 
         <div>
           <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-            <Heart className="h-4 w-4 text-rose-500" /> Habit Stacking (Konektadong Gawain)
+            <Heart className="h-4 w-4 text-rose-500" /> Habit Stacking (Connected Routine)
           </label>
           <input
             type="text"
             value={ritual}
             onChange={(e) => setRitual(e.target.value)}
-            placeholder="hal. pagtimpla ng kape, pagsakay sa MRT"
+            placeholder="e.g. brewing morning coffee, riding the MRT"
             className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs text-ink focus:border-flame focus:outline-none"
           />
           <p className="text-[10px] text-ink-muted mt-1 italic">
-            "Maghuhulog ako tuwing {time || '7:15 AM'} pagkatapos kong {ritual || 'mag-almusal'}."
+            "I will drop a coin every day at {time || '7:15 AM'} right after I {ritual || 'brew my morning coffee'}."
           </p>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-stone-100">
           <label className="text-xs font-bold text-ink flex items-center gap-1.5">
-            <Volume2 className="h-4 w-4 text-emerald-600" /> Sound Effects & Haptics
+            <Volume2 className="h-4 w-4 text-emerald-600" /> Audio Clinks & Sound Effects
           </label>
           <input
             type="checkbox"
@@ -104,24 +104,24 @@ export default function Settings() {
         </div>
 
         <button type="submit" className="btn-flame w-full py-2.5 text-xs font-bold">
-          {saved ? 'Na-save na! ✓' : 'I-save ang Ritwal'}
+          {saved ? 'Settings Saved! ✓' : 'Save Daily Ritual'}
         </button>
       </form>
 
-      {/* Privacy Guarantee info box */}
+      {/* Local Storage & Reset */}
       <div className="mt-4 rounded-2xl border border-stone-200 bg-white/70 p-4 text-left">
         <h4 className="text-xs font-black text-ink flex items-center gap-1.5">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" /> Privacy Note
+          <ShieldCheck className="h-4 w-4 text-emerald-600" /> Data Storage
         </h4>
         <p className="text-[11px] text-ink-muted mt-1 leading-relaxed">
-          Ang Hulog ay 100% individual personal sanctuary. Ang iyong score, streak, at alkansya ay hindi kailanman ibabahagi sa pamilya o sa kahit kaninong advisor.
+          Your Hulog progress is stored safely in your browser's local storage.
         </p>
 
         <button
           onClick={handleReset}
           className="mt-4 flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline"
         >
-          <RotateCcw className="h-3 w-3" /> I-reset ang aking progress (Local Storage)
+          <RotateCcw className="h-3 w-3" /> Reset my progress (Local Storage)
         </button>
       </div>
     </div>

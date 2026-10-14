@@ -1,34 +1,30 @@
 /**
  * The daily schedule — which 3 cards everyone gets on a given date.
  *
- * It is fully deterministic (no database needed): the same date always gives
- * the same cards, for every player, and the admin panel can list the exact
- * dates every question will be shown.
+ * Fully deterministic (no database needed): the same date always gives
+ * the same cards for every player, mapped across the 365-day year.
  *
  * Rules (from the Hulog concept paper, "The Core Daily Loop"):
- *   Mon–Sat  → Card 1 "Bagong Kaalaman" (new insight)
- *              Card 2 "Balik-Aral"      (spaced review of a card shown 1 / 3 / 7 days ago)
- *              Card 3 "Para sa Iyo"     (personalized slot — in this MVP, the next new card;
- *                                         Money DNA routing comes in Phase 2)
- *   Sunday   → Card 1 "Linggo Boss"     (Shock Simulator, FRP 108)
- *              Card 2 + 3 "Balik-Aral"  (review of the week)
- *
- * Change SCHEDULE_START to move the whole calendar.
+ *   Mon–Sat  → Card 1 "Daily Insight"     (new curriculum card)
+ *              Card 2 "Spaced Review"     (spaced repetition of a card shown 1 / 3 / 7 days ago)
+ *              Card 3 "Recommended"       (personalized slot / next curriculum card)
+ *   Sunday   → Card 1 "Sunday Boss"       (Shock Simulator, FRP 108 — 52 unique weeks)
+ *              Card 2 + 3 "Weekly Review" (spaced reinforcement of the week)
  */
 import { QUESTIONS, isBossCard } from '../data/questions';
 import type { CourseCode, Question } from '../data/types';
 import { addDays, dayOfWeek, diffDays, type ISODate } from './date';
 
-/** Day #1 of Hulog. Keep it on a Monday so weeks line up with the Sunday Basag. */
+/** Day #1 of Hulog. Monday, October 12, 2026. */
 export const SCHEDULE_START: ISODate = '2026-10-12';
 
 export type CardRole = 'new' | 'review' | 'personal' | 'boss';
 
 export const ROLE_LABEL: Record<CardRole, string> = {
-  new: 'Bagong Kaalaman',
-  review: 'Balik-Aral',
-  personal: 'Para sa Iyo',
-  boss: 'Linggo Boss',
+  new: 'Daily Insight',
+  review: 'Spaced Review',
+  personal: 'Recommended for You',
+  boss: 'Sunday Boss: Crisis Simulator',
 };
 
 export const ROLE_STYLE: Record<CardRole, string> = {
@@ -52,14 +48,18 @@ export interface DaySchedule {
 }
 
 // ── Build the weekday rotation: round-robin across FRP courses for variety ──
-const COURSE_ORDER: CourseCode[] = [101, 102, 103, 104, 105, 106, 107, 108];
+const COURSE_ORDER: CourseCode[] = [101, 102, 103, 104, 105, 106, 107];
 
 function buildPool(): Question[] {
-  const byCourse = COURSE_ORDER.map((c) => QUESTIONS.filter((q) => q.course === c && !isBossCard(q)));
+  const byCourse = COURSE_ORDER.map((c) =>
+    QUESTIONS.filter((q) => q.course === c && !isBossCard(q)),
+  );
   const longest = Math.max(...byCourse.map((l) => l.length));
   const pool: Question[] = [];
   for (let i = 0; i < longest; i++) {
-    for (const list of byCourse) if (list[i]) pool.push(list[i]);
+    for (const list of byCourse) {
+      if (list[i]) pool.push(list[i]);
+    }
   }
   return pool;
 }
@@ -91,13 +91,17 @@ function seasonalTags(date: ISODate): string[] {
   const [, m, d] = date.split('-').map(Number);
   const tags: string[] = [];
   const lastDay = new Date(Date.UTC(Number(date.slice(0, 4)), m, 0)).getUTCDate();
-  if (d === 15 || d === 30 || (m === 2 && d === lastDay)) tags.push('Sweldo Hulog Special');
-  if (m === 1) tags.push('Bagong Taon, Bagong Alkansya');
+  if (d === 15 || d === 30 || (m === 2 && d === lastDay)) tags.push('Payday Hulog Special');
+  if (m === 1) tags.push('New Year, Fresh Alkansya');
+  if (m === 2) tags.push('Family Financial Alignment');
   if (m === 3 || m === 4) tags.push('Tax & Statutory Deadline Focus');
-  if (m === 6) tags.push('Balik-Eskwela & Tag-Ulan');
-  if (m === 10) tags.push('Anti-Scam Month');
-  if (m === 11 || m === 12) tags.push('Paskong Masinop');
-  if (dayOfWeek(date) === 0) tags.push('Basag Day');
+  if (m === 5) tags.push('Summer Household Energy Management');
+  if (m === 6) tags.push('Balik-Eskwela & Tag-Ulan Readiness');
+  if (m === 7 || m === 8) tags.push('Mid-Year Financial Audit');
+  if (m === 9) tags.push('Pre-Holiday Sinking Funds');
+  if (m === 10) tags.push('National Cybersecurity & Anti-Scam Month');
+  if (m === 11 || m === 12) tags.push('Paskong Masinop & 13th Month Plan');
+  if (dayOfWeek(date) === 0) tags.push('Sunday Basag Day');
   return tags;
 }
 
@@ -105,7 +109,7 @@ function seasonalTags(date: ISODate): string[] {
 export function getDaySchedule(date: ISODate): DaySchedule | null {
   const index = diffDays(SCHEDULE_START, date);
   if (index < 0) return null;
-  const L = ROTATION.length;
+  const L = ROTATION.length || 1;
   const isSunday = dayOfWeek(date) === 0;
   const n = weekdaysBefore(date);
   let cards: ScheduledCard[];
@@ -121,10 +125,8 @@ export function getDaySchedule(date: ISODate): DaySchedule | null {
     const newA = ROTATION[mod(2 * n, L)];
     const newB = ROTATION[mod(2 * n + 1, L)];
     const offset = REVIEW_OFFSETS[n % REVIEW_OFFSETS.length];
-    // Early days don't have a 3- or 7-day-old card yet → fall back to yesterday's.
     let reviewIdx = 2 * n - offset;
     if (reviewIdx < 0) reviewIdx = 2 * n - 2;
-    // Day #1 has nothing to review at all → borrow the last card of the rotation.
     const review: ScheduledCard =
       reviewIdx >= 0
         ? { question: ROTATION[mod(reviewIdx, L)], role: 'review' }
@@ -171,30 +173,4 @@ export function scheduleRange(from: ISODate, to: ISODate): DaySchedule[] {
     if (s) out.push(s);
   }
   return out;
-}
-
-/** CSV of the schedule, for Excel / Google Sheets. */
-export function scheduleToCSV(days: DaySchedule[]): string {
-  const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-  const rows = [['Date', 'Hulog #', 'Day', 'Slot', 'Role', 'Question ID', 'FRP', 'Format', 'Prompt', 'Answer', 'Tags'].join(',')];
-  for (const d of days) {
-    d.cards.forEach((c, i) => {
-      rows.push(
-        [
-          d.date,
-          String(d.hulogNumber),
-          ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek(d.date)],
-          String(i + 1),
-          ROLE_LABEL[c.role],
-          c.question.id,
-          `FRP ${c.question.course}`,
-          esc(c.question.format),
-          esc(c.question.prompt),
-          esc(c.question.answerLabel),
-          esc(d.tags.join(' | ')),
-        ].join(','),
-      );
-    });
-  }
-  return '\uFEFF' + rows.join('\r\n');
 }

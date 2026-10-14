@@ -8,6 +8,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminCalendar from './pages/admin/AdminCalendar';
+import AdminStatistics from './pages/admin/AdminStatistics';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route index element={<AdminOverview />} />
         <Route path="questions" element={<AdminQuestions />} />
         <Route path="calendar" element={<AdminCalendar />} />
+        <Route path="statistics" element={<AdminStatistics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
