@@ -7,7 +7,7 @@ import { AuthModal } from './AuthModal';
 
 export function Header() {
   const { currentUser } = useAuth();
-  const isAdmin = useAdminAuth();
+  const isAdmin = Boolean(currentUser && currentUser.username.toLowerCase() === 'hestia');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
@@ -56,7 +56,7 @@ export function Header() {
           </NavLink>
         </nav>
 
-        {/* Right Actions: Registered User Account & Admin Link */}
+        {/* Right Actions: Registered User Account & Admin Link (Only for Hestia) */}
         <div className="flex items-center gap-2">
           {/* User Account / Sign In Pill */}
           <button
@@ -70,18 +70,17 @@ export function Header() {
             </span>
           </button>
 
-          <NavLink
-            to="/admin"
-            className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition ${
-              isAdmin
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                : 'border-[#E3D5BD] bg-white/80 text-ink-muted hover:text-ink hover:bg-white'
-            }`}
-            title="Curriculum & Analytics Administration"
-          >
-            {isAdmin ? <ShieldAlert className="h-3.5 w-3.5 text-emerald-600" /> : <Lock className="h-3.5 w-3.5 text-flame-deep" />}
-            <span className="hidden sm:inline">{isAdmin ? 'Admin (Active)' : 'Admin'}</span>
-          </NavLink>
+          {/* Admin panel entry - ONLY appears when admin (Hestia) is logged in! */}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-400 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 shadow-2xs anim-pop"
+              title="Curriculum & Analytics Administration"
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Admin Panel</span>
+            </NavLink>
+          )}
         </div>
       </div>
 

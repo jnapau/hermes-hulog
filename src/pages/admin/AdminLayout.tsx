@@ -3,9 +3,11 @@ import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, HelpCircle, Calendar, BarChart3, ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { HestiaMascot } from '../../components/HestiaMascot';
 import { loginAdmin, logoutAdmin, useAdminAuth } from '../../lib/adminAuth';
+import { useAuth, loginUser, logoutUser } from '../../lib/users';
 
 export default function AdminLayout() {
-  const isAuthed = useAdminAuth();
+  const { currentUser } = useAuth();
+  const isAuthed = useAdminAuth() || Boolean(currentUser && currentUser.username.toLowerCase() === 'hestia');
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -14,14 +16,26 @@ export default function AdminLayout() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErr('');
-    const res = loginAdmin(username, password);
-    if (!res.success) {
-      setErr(res.message || 'Maling username o password.');
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+
+    if (cleanUser.toLowerCase() !== 'hestia') {
+      setErr('Only administrator "Hestia" can access this panel. Regular users log in on the app.');
+      return;
     }
+
+    const userRes = loginUser('Hestia', cleanPass);
+    if (!userRes.success) {
+      setErr(userRes.message || 'Incorrect admin password.');
+      return;
+    }
+
+    loginAdmin('Hestia', cleanPass);
   };
 
   const handleLogout = () => {
     logoutAdmin();
+    logoutUser();
     navigate('/');
   };
 

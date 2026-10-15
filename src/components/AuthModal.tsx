@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { User as UserIcon, LogOut, UserPlus, LogIn, X, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { User as UserIcon, LogOut, UserPlus, LogIn, X, CheckCircle, ShieldCheck, KeyRound } from 'lucide-react';
 import { useAuth, loginUser, registerUser, logoutUser } from '../lib/users';
 
 interface AuthModalProps {
@@ -17,10 +18,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   if (!isOpen) return null;
 
+  const isHestiaAdmin = Boolean(currentUser && currentUser.username.toLowerCase() === 'hestia');
+
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setSuccessNote('');
+
     if (authMode === 'register') {
       const res = registerUser(usernameInput, passwordInput);
       if (!res.success) {
@@ -43,9 +47,15 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }, 600);
   };
 
-  const handleQuickSwitch = (username: string) => {
-    loginUser(username);
-    onClose();
+  const handleQuickSwitch = (u: { username: string; password?: string }) => {
+    setAuthError('');
+    const pass = u.password || (u.username.toLowerCase() === 'hestia' ? 'HermesHulog' : 'password123');
+    const res = loginUser(u.username, pass);
+    if (res.success) {
+      onClose();
+    } else {
+      setAuthError(res.message || 'Login failed.');
+    }
   };
 
   return (
@@ -63,10 +73,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <UserIcon className="h-5 w-5" />
           </div>
           <h3 className="text-lg font-black text-ink">
-            {currentUser ? `Player: ${currentUser.username}` : authMode === 'login' ? 'Player Login' : 'Instant Player Registration'}
+            {currentUser ? `Player: ${currentUser.username}` : authMode === 'login' ? 'User Login' : 'Instant Registration'}
           </h3>
           <p className="text-xs text-ink-muted mt-0.5">
-            Registered players save answers to the live Admin Analytics panel. Just username & password, no verification needed.
+            Registered players save answers to the live Admin Analytics panel. Just username & password (no verification needed).
           </p>
         </div>
 
@@ -74,8 +84,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="space-y-4">
             <div className="rounded-2xl bg-stone-50 p-3 border border-stone-200 text-xs">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-ink-muted font-semibold">Logged-in User:</span>
-                <span className="font-extrabold text-brand">{currentUser.username}</span>
+                <span className="text-ink-muted font-semibold">Active Account:</span>
+                <span className="font-extrabold text-brand text-sm">{currentUser.username}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-ink-muted font-semibold">Registered:</span>
@@ -83,25 +93,57 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
             </div>
 
+            {/* If logged in as Hestia (Admin) */}
+            {isHestiaAdmin ? (
+              <div className="rounded-2xl bg-emerald-50 p-3 border border-emerald-200 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-black text-emerald-800">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <span>Admin Privileges Active</span>
+                </div>
+                <p className="text-[11px] text-emerald-700">
+                  You are logged in as <strong>Hestia</strong>. The Admin Panel button is now visible in the top header.
+                </p>
+                <Link
+                  to="/admin"
+                  onClick={onClose}
+                  className="w-full inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-700 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-2xs"
+                >
+                  Open Admin Panel →
+                </Link>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-amber-50/70 p-2.5 border border-amber-200/80 text-[11px] text-cocoa">
+                <span>Standard Player Mode: Your answers are gathered and analyzed in the Admin Panel.</span>
+              </div>
+            )}
+
             {/* Quick switch to other sample users */}
             <div>
               <span className="text-[11px] font-bold text-ink-muted uppercase block mb-1.5">
-                Switch to Another Player:
+                Switch Account:
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {users.map((u) => (
-                  <button
-                    key={u.username}
-                    onClick={() => handleQuickSwitch(u.username)}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold transition border ${
-                      u.username === currentUser.username
-                        ? 'bg-brand text-white border-brand'
-                        : 'bg-stone-100 text-ink-muted hover:bg-stone-200 border-stone-200'
-                    }`}
-                  >
-                    {u.username}
-                  </button>
-                ))}
+                {users.map((u) => {
+                  const isUserActive = u.username.toLowerCase() === currentUser.username.toLowerCase();
+                  const isAdminChip = u.username.toLowerCase() === 'hestia';
+                  return (
+                    <button
+                      key={u.username}
+                      onClick={() => handleQuickSwitch(u)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition border flex items-center gap-1 ${
+                        isUserActive
+                          ? 'bg-brand text-white border-brand'
+                          : isAdminChip
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                          : 'bg-stone-100 text-ink-muted hover:bg-stone-200 border-stone-200'
+                      }`}
+                      title={isAdminChip ? 'Admin User' : 'Player User'}
+                    >
+                      {isAdminChip && <ShieldCheck className="h-3 w-3 text-emerald-600" />}
+                      <span>{u.username}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -135,7 +177,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <input
                 type="text"
                 required
-                placeholder="e.g. maria_santos"
+                placeholder="e.g. maria_santos or Hestia"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-ink focus:border-brand focus:outline-none"
@@ -144,10 +186,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div>
               <label className="text-[11px] font-extrabold text-ink-muted block mb-1 uppercase">
-                Password (No verification needed)
+                Password
               </label>
               <input
                 type="password"
+                required
                 placeholder="Enter password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
@@ -175,8 +218,24 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <span>{authMode === 'login' ? 'Sign In & Save Answers' : 'Instant Register & Play'}</span>
             </button>
 
+            {/* Quick 1-click Admin Credentials button */}
+            <div className="rounded-xl bg-emerald-50/80 p-2 border border-emerald-200 text-center text-[11px] text-emerald-900">
+              <span className="font-semibold">Administrator account:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsernameInput('Hestia');
+                  setPasswordInput('HermesHulog');
+                  setAuthMode('login');
+                }}
+                className="inline-flex items-center gap-1 ml-1 text-emerald-700 hover:text-emerald-900 font-extrabold underline cursor-pointer"
+              >
+                <KeyRound className="h-3 w-3" /> Auto-fill Hestia / HermesHulog
+              </button>
+            </div>
+
             {/* Switch between login and register */}
-            <div className="text-center pt-2">
+            <div className="text-center pt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -191,22 +250,30 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </button>
             </div>
 
-            {/* Quick demo account select */}
+            {/* Quick demo accounts */}
             <div className="pt-2 border-t border-stone-100">
               <span className="text-[10px] font-bold text-ink-muted block mb-1">
-                Or select a demo registered user:
+                Demo Accounts (Click to Sign In):
               </span>
               <div className="flex flex-wrap gap-1">
-                {users.slice(0, 4).map((u) => (
-                  <button
-                    key={u.username}
-                    type="button"
-                    onClick={() => handleQuickSwitch(u.username)}
-                    className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-ink-muted hover:bg-amber-100 hover:text-cocoa transition"
-                  >
-                    {u.username}
-                  </button>
-                ))}
+                {users.slice(0, 5).map((u) => {
+                  const isAdminChip = u.username.toLowerCase() === 'hestia';
+                  return (
+                    <button
+                      key={u.username}
+                      type="button"
+                      onClick={() => handleQuickSwitch(u)}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-bold transition flex items-center gap-1 ${
+                        isAdminChip
+                          ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                          : 'bg-stone-100 text-ink-muted hover:bg-amber-100 hover:text-cocoa'
+                      }`}
+                    >
+                      {isAdminChip && <ShieldCheck className="h-2.5 w-2.5 text-emerald-700" />}
+                      <span>{u.username}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </form>

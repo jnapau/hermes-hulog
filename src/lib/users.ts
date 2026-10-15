@@ -9,7 +9,7 @@ import { useSyncExternalStore } from 'react';
 
 export interface User {
   username: string;
-  password?: string;
+  password: string;
   registeredAt: string;
   avatarSeed?: string;
 }
@@ -29,8 +29,9 @@ const CURRENT_USER_KEY = 'hulog.current_user.v1';
 const ANSWER_LOGS_KEY = 'hulog.answer_logs.v1';
 const EQUIPPED_LOOK_KEY = 'hulog.equipped_look.v1';
 
-// Seed demo users with realistic learning answers so Admin Panel has rich initial analytics
+// Seed demo users with passwords and realistic learning answers
 const INITIAL_USERS: User[] = [
+  { username: 'Hestia', password: 'HermesHulog', registeredAt: '2026-10-10T08:00:00Z' },
   { username: 'juan_delacruz', password: 'password123', registeredAt: '2026-10-12T08:30:00Z' },
   { username: 'maria_santos', password: 'password123', registeredAt: '2026-10-12T09:15:00Z' },
   { username: 'pedro_penduko', password: 'password123', registeredAt: '2026-10-13T07:45:00Z' },
@@ -63,11 +64,12 @@ const INITIAL_LOGS: AnswerLog[] = [
 function loadUsers(): User[] {
   try {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
+    let list: User[] = raw ? JSON.parse(raw) : INITIAL_USERS;
+    if (!list.some((u) => u.username.toLowerCase() === 'hestia')) {
+      list = [{ username: 'Hestia', password: 'HermesHulog', registeredAt: '2026-10-10T08:00:00Z' }, ...list];
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(list));
     }
-    return JSON.parse(raw);
+    return list;
   } catch {
     return INITIAL_USERS;
   }
@@ -90,7 +92,7 @@ function loadCurrentUser(): string | null {
   try {
     const raw = localStorage.getItem(CURRENT_USER_KEY);
     if (raw) return raw;
-    // Default to 'juan_delacruz' for seamless sample demonstration
+    // Default to 'juan_delacruz' (a regular user) for sample demonstration
     return 'juan_delacruz';
   } catch {
     return 'juan_delacruz';
@@ -120,29 +122,45 @@ export function getCurrentUser(): User | null {
   if (!cachedCurrentUser) return null;
   return cachedUsers.find((u) => u.username.toLowerCase() === cachedCurrentUser?.toLowerCase()) ?? {
     username: cachedCurrentUser,
+    password: '',
     registeredAt: new Date().toISOString(),
   };
+}
+
+export function isAdminUser(user?: User | null | string): boolean {
+  if (!user) return false;
+  const username = typeof user === 'string' ? user : user.username;
+  return username.toLowerCase() === 'hestia';
 }
 
 export function getAllAnswerLogs(): AnswerLog[] {
   return cachedLogs;
 }
 
-export function registerUser(username: string, password?: string): { success: boolean; message?: string } {
-  const cleanUsername = username.trim().toLowerCase();
+export function registerUser(username: string, password: string): { success: boolean; message?: string } {
+  const cleanUsername = username.trim();
+  const cleanLower = cleanUsername.toLowerCase();
+  const cleanPassword = password.trim();
+
   if (!cleanUsername) {
     return { success: false, message: 'Please enter a valid username.' };
   }
   if (cleanUsername.length < 3) {
     return { success: false, message: 'Username must be at least 3 characters.' };
   }
-  if (cachedUsers.some((u) => u.username.toLowerCase() === cleanUsername)) {
+  if (!cleanPassword) {
+    return { success: false, message: 'Please enter a password.' };
+  }
+  if (cleanPassword.length < 4) {
+    return { success: false, message: 'Password must be at least 4 characters.' };
+  }
+  if (cachedUsers.some((u) => u.username.toLowerCase() === cleanLower)) {
     return { success: false, message: 'Username already exists. You can log in instead!' };
   }
 
   const newUser: User = {
     username: cleanUsername,
-    password: password || 'pass',
+    password: cleanPassword,
     registeredAt: new Date().toISOString(),
   };
 
@@ -160,16 +178,41 @@ export function registerUser(username: string, password?: string): { success: bo
   return { success: true };
 }
 
-export function loginUser(username: string, password?: string): { success: boolean; message?: string } {
-  const cleanUsername = username.trim().toLowerCase();
+export function loginUser(username: string, password: string): { success: boolean; message?: string } {
+  const cleanUsername = username.trim();
+  const cleanLower = cleanUsername.toLowerCase();
+  const cleanPassword = password.trim();
+
   if (!cleanUsername) {
-    return { success: false, message: 'Please enter a username.' };
+    return { success: false, message: 'Please enter your username.' };
+  }
+  if (!cleanPassword) {
+    return { success: false, message: 'Please enter your password.' };
   }
 
-  const existing = cachedUsers.find((u) => u.username.toLowerCase() === cleanUsername);
+  // Admin special handling: username Hestia and password HermesHulog
+  if (cleanLower === 'hestia') {
+    if (cleanPassword === 'HermesHulog' || cleanPassword === 'hestia2026') {
+      cachedCurrentUser = 'Hestia';
+      try {
+        localStorage.setItem(CURRENT_USER_KEY, 'Hestia');
+      } catch {
+        /* storage safe */
+      }
+      notify();
+      return { success: true };
+    } else {
+      return { success: false, message: 'Incorrect password for admin account Hestia.' };
+    }
+  }
+
+  const existing = cachedUsers.find((u) => u.username.toLowerCase() === cleanLower);
   if (!existing) {
-    // If not found, automatically register them smoothly (sample app convenience)
-    return registerUser(cleanUsername, password);
+    return { success: false, message: 'User not found. Please click Register to create a new account.' };
+  }
+
+  if (existing.password && existing.password !== cleanPassword) {
+    return { success: false, message: 'Incorrect password. Please try again.' };
   }
 
   cachedCurrentUser = existing.username;
