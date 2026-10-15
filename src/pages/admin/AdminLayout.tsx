@@ -68,6 +68,20 @@ export default function AdminLayout() {
               </p>
             )}
 
+            <div className="rounded-xl bg-amber-50/80 p-2.5 border border-amber-200 text-center text-[11px] text-cocoa">
+              <span className="font-bold">Admin Credentials:</span> Username: <strong className="text-brand">Hestia</strong> · Password: <strong className="text-brand">HermesHulog</strong>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('Hestia');
+                  setPassword('HermesHulog');
+                }}
+                className="block mx-auto mt-1 text-[10px] text-brand hover:underline font-black bg-white px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs"
+              >
+                ⚡ 1-Click Auto-Fill Credentials
+              </button>
+            </div>
+
             <button
               type="submit"
               className="w-full rounded-xl bg-brand py-2.5 text-xs font-bold text-white hover:bg-brand-light transition shadow-sm"

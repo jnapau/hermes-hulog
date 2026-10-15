@@ -147,7 +147,7 @@ export default function Collection() {
             }`}
           >
             <span>🏛️</span>
-            <span>All Shelves (Grand Cabinet)</span>
+            <span>Shelf Display Showcase</span>
           </button>
 
           {SHELF_CATEGORIES.map((cat) => (
@@ -167,7 +167,7 @@ export default function Collection() {
         </div>
       </div>
 
-      {/* The Multi-Tier Wooden Display Cabinet */}
+      {/* The Multi-Tier Wooden Display Cabinet Showcase */}
       <div className="space-y-6">
         {filteredCategories.map((cat) => {
           const items = COLLECTIBLES.filter((c) => c.kind === cat.id);
@@ -176,7 +176,7 @@ export default function Collection() {
           return (
             <div
               key={cat.id}
-              className="relative rounded-3xl bg-gradient-to-b from-[#FDFBF7] to-[#F5ECE0] p-4 sm:p-5 border-4 border-[#C7A87A] shadow-lg overflow-hidden"
+              className="relative rounded-3xl bg-gradient-to-b from-[#FDFBF7] to-[#F5ECE0] p-4 sm:p-5 border-4 border-[#C7A87A] shadow-xl overflow-hidden"
             >
               {/* Wooden Shelf Header with Brass Bracket Accents */}
               <div className="flex items-start justify-between mb-3 border-b-2 border-[#D7C19D] pb-3">
@@ -207,61 +207,69 @@ export default function Collection() {
                 </div>
               </div>
 
-              {/* Wooden Display Planks (Shelf Display) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-2">
-                {items.map((it) => {
-                  const isUnlocked = ownedIds.has(it.id);
-                  const isEquipped = equippedLook === it.id;
+              {/* Wooden Display Shelf Ledge (Items sitting on real wooden showcase plank) */}
+              <div className="relative pt-2 pb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
+                  {items.map((it) => {
+                    const isUnlocked = ownedIds.has(it.id);
+                    const isEquipped = equippedLook === it.id;
 
-                  return (
-                    <button
-                      key={it.id}
-                      onClick={() => setSelectedItem(it)}
-                      className={`group relative flex flex-col items-center justify-between rounded-2xl p-3 text-center transition-all ${
-                        isEquipped
-                          ? 'bg-gradient-to-b from-amber-100 to-amber-200 border-2 border-flame shadow-md ring-2 ring-flame'
-                          : isUnlocked
-                          ? 'bg-gradient-to-b from-white to-[#FFF6E6] border-2 border-amber-300 shadow-sm hover:scale-[1.03] hover:shadow-md'
-                          : 'bg-stone-100/80 border border-stone-300/80 opacity-60 hover:opacity-80'
-                      }`}
-                    >
-                      {/* Wooden Stand Top Glow */}
-                      {isUnlocked && (
-                        <div className="absolute top-1.5 w-12 h-1 bg-amber-400/40 rounded-full blur-xs" />
-                      )}
-
-                      {/* Wearable Tag */}
-                      {it.wearable && isUnlocked && (
-                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-900 border border-amber-400/40">
-                          {isEquipped ? 'Worn' : 'Fit'}
-                        </span>
-                      )}
-
-                      {/* Collectible Visual */}
-                      <div className="text-4xl sm:text-5xl my-2 relative transition-transform group-hover:scale-110">
-                        {it.emoji}
-                        {!isUnlocked && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full backdrop-blur-[1px]">
-                            <Lock className="h-4 w-4 text-stone-700 drop-shadow" />
-                          </div>
+                    return (
+                      <button
+                        key={it.id}
+                        onClick={() => setSelectedItem(it)}
+                        className={`group relative flex flex-col items-center justify-between rounded-2xl p-3 text-center transition-all ${
+                          isEquipped
+                            ? 'bg-gradient-to-b from-amber-100 to-amber-200 border-2 border-flame shadow-md ring-2 ring-flame'
+                            : isUnlocked
+                            ? 'bg-gradient-to-b from-white to-[#FFF6E6] border-2 border-amber-300 shadow-sm hover:scale-[1.03] hover:shadow-md'
+                            : 'bg-stone-100/80 border border-stone-300/80 opacity-60 hover:opacity-80'
+                        }`}
+                      >
+                        {/* Stand Top Glow */}
+                        {isUnlocked && (
+                          <div className="absolute top-1.5 w-12 h-1 bg-amber-400/40 rounded-full blur-xs" />
                         )}
-                      </div>
 
-                      {/* Authentic Filipino Name Tag */}
-                      <div className="w-full">
-                        <span className="block text-xs font-black text-[#451A03] line-clamp-1">
-                          {it.nameFilipino}
-                        </span>
-                        <span className="block text-[10px] font-medium text-ink-muted line-clamp-1 italic">
-                          {it.nameEnglish}
-                        </span>
-                      </div>
+                        {/* Wearable Tag */}
+                        {it.wearable && isUnlocked && (
+                          <span className="absolute top-2 right-2 text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-900 border border-amber-400/40">
+                            {isEquipped ? 'Worn' : 'Fit'}
+                          </span>
+                        )}
 
-                      {/* Polished Wooden Shelf Ledge Effect at Bottom of Card */}
-                      <div className="mt-2.5 h-2 w-full rounded-full bg-gradient-to-r from-[#692F0C] via-[#9A3412] to-[#692F0C] shadow-inner" />
-                    </button>
-                  );
-                })}
+                        {/* Collectible Visual */}
+                        <div className="text-4xl sm:text-5xl my-2 relative transition-transform group-hover:scale-110">
+                          {it.emoji}
+                          {!isUnlocked && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-full backdrop-blur-[1px]">
+                              <Lock className="h-4 w-4 text-stone-700 drop-shadow" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Authentic Filipino Name Tag */}
+                        <div className="w-full">
+                          <span className="block text-xs font-black text-[#451A03] line-clamp-1">
+                            {it.nameFilipino}
+                          </span>
+                          <span className="block text-[10px] font-medium text-ink-muted line-clamp-1 italic">
+                            {it.nameEnglish}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Heavy Wooden Horizontal Shelf Plank running across the cabinet */}
+                <div className="mt-2 h-4 w-full rounded-lg bg-gradient-to-r from-[#4E2207] via-[#78350F] to-[#4E2207] shadow-md border-t border-[#A15822] flex items-center justify-between px-3">
+                  <div className="h-1.5 w-6 rounded-full bg-[#3B1703] opacity-60" />
+                  <span className="text-[8px] font-extrabold uppercase tracking-widest text-[#D4A373]/50">
+                    Solid Narra Exhibition Shelf
+                  </span>
+                  <div className="h-1.5 w-6 rounded-full bg-[#3B1703] opacity-60" />
+                </div>
               </div>
             </div>
           );

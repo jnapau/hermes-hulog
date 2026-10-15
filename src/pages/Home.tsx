@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Sparkles, CheckCircle2, User } from 'lucide-react';
+import { Play, Sparkles, CheckCircle2, User, UserPlus } from 'lucide-react';
 import { useProgress, canBasag, doBasag } from '../lib/progress';
 import { todayPH, weekStart, addDays, DAY_SHORT } from '../lib/date';
 import { getDaySchedule } from '../lib/schedule';
@@ -9,6 +9,7 @@ import { Alkansya } from '../components/Alkansya';
 import { playBasag } from '../lib/sound';
 import { COLLECTIBLE_BY_ID } from '../data/collectibles';
 import { useAuth } from '../lib/users';
+import { AuthModal } from '../components/AuthModal';
 
 export default function Home() {
   const progress = useProgress();
@@ -17,6 +18,7 @@ export default function Home() {
   const playedToday = Boolean(progress.plays[today]);
   const schedule = getDaySchedule(today);
 
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [basagReward, setBasagReward] = useState<string | null>(null);
 
   // Weekly tracker days
@@ -35,15 +37,41 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-md px-4 py-6 sm:px-6">
       {/* Top Welcome / Player Header (Clean, No Inaccurate Stats) */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-100/70 px-3.5 py-1.5 text-xs font-bold text-cocoa shadow-2xs">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-100/70 hover:bg-amber-100 px-3.5 py-1.5 text-xs font-bold text-cocoa shadow-2xs transition"
+          title="Click to register, switch, or view profile"
+        >
           <User className="h-3.5 w-3.5 text-amber-700" />
-          <span>{currentUser ? currentUser.username : 'Guest Player'}</span>
-        </div>
+          <span>{currentUser ? currentUser.username : 'Guest Player (Click to Register)'}</span>
+        </button>
 
         <div className="text-right">
           <span className="text-xs font-bold text-ink-muted">Hulog #{schedule?.hulogNumber ?? 1}</span>
         </div>
+      </div>
+
+      {/* Account Info Bar */}
+      <div className="mb-4 rounded-2xl bg-amber-50/90 border border-amber-200/80 px-3.5 py-2 flex items-center justify-between text-2xs text-cocoa shadow-2xs">
+        <div>
+          {currentUser ? (
+            <p>
+              Signed in as <strong>{currentUser.username}</strong>. Answers are saved for admin analytics.
+            </p>
+          ) : (
+            <p>
+              Sample integration: Register to record your answers for the Admin Panel.
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="font-extrabold text-brand hover:underline flex items-center gap-1 shrink-0 ml-2"
+        >
+          <UserPlus className="h-3 w-3" />
+          {currentUser ? 'Switch User' : 'Register Now'}
+        </button>
       </div>
 
       {/* Main Sanctuary Card */}
@@ -177,6 +205,9 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* User Registration & Login Modal */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 }
