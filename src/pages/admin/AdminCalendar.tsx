@@ -2,17 +2,19 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { scheduleRange, SCHEDULE_START, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
 import { todayPH, addDays, formatLong, dayOfWeek, DAY_SHORT } from '../../lib/date';
+import { useAllQuestions } from '../../lib/customQuestions';
 import { TIER_STYLE } from '../../data/types';
 import { ChevronLeft, ChevronRight, Tag, BarChart3 } from 'lucide-react';
 
 export default function AdminCalendar() {
   const today = todayPH();
+  const questions = useAllQuestions();
   const [startDate, setStartDate] = useState(today);
   const [daysCount, setDaysCount] = useState(30);
 
   const days = useMemo(() => {
     return scheduleRange(startDate, addDays(startDate, daysCount - 1));
-  }, [startDate, daysCount]);
+  }, [startDate, daysCount, questions]);
 
   const handleShiftDays = (amount: number) => {
     const next = addDays(startDate, amount);

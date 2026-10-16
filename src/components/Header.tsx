@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ShieldAlert, Sparkles, Home as HomeIcon, User as UserIcon, Lock } from 'lucide-react';
+import { ShieldAlert, Sparkles, Home as HomeIcon, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../lib/users';
-import { useAdminAuth } from '../lib/adminAuth';
 import { AuthModal } from './AuthModal';
 
 export function Header() {
   const { currentUser } = useAuth();
-  const isAdmin = Boolean(currentUser && currentUser.username.toLowerCase() === 'hestia');
+  const isAdmin = currentUser?.is_admin === true;
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
@@ -40,7 +39,7 @@ export function Header() {
             }
           >
             <HomeIcon className="h-3.5 w-3.5" />
-            <span>Alkansya</span>
+            <span>Home</span>
           </NavLink>
 
           <NavLink

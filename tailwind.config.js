@@ -24,7 +24,7 @@ export default {
         cream: '#FFF8EC',
         'cream-deep': '#FCEFD6',
         flame: '#F5A524',
-        'flame-deep': '#E8890C',
+        'flame-deep': '#9B4B08',
         ember: '#F26B3A',
         bamboo: '#7FA145',
         'bamboo-deep': '#5B7A2E',

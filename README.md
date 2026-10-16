@@ -1,108 +1,54 @@
-# Hermes Hulog — Hestia's Daily Money Game (Standalone Web App)
+# Hulog · Hermes Academy
 
-> **"Isang hulog araw-araw."** A 60-second micro-learning habit game under **Hermes Academy** (Exoasia Innovation Hub). 
-> Standalone web application for Desktop and Mobile, complete with a comprehensive **Admin Portal** for questions, curriculum management, and registered player analytics.
+React 18, TypeScript, Tailwind, Vite and Supabase. Three daily Filipino financial-literacy cards, a bamboo coin bank, persistent player accounts, five collection shelves, wearable Hestia costumes, and a database-protected admin panel.
 
----
+## Run locally
 
-## 🚀 Overview & Tech Stack
+1. Run `npm ci`.
+2. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (publishable or legacy anon key).
+3. Run `npm run dev`.
 
-- **Framework**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + Plus Jakarta Sans + Hermes Brand Tokens (`#1B50D8`, Hestia Honey, Bamboo Alkansya)
-- **Player Accounts & Storage**: Registered player session tracking (Username & Password, sample integration) + Local answer logging + Deterministic nationwide schedule
-- **Admin Portal**: Passcode-gated administration panel (`/admin`) for adding custom questions, managing curriculum, and auditing real user answer analytics
+Never put GitHub tokens, service-role keys, or passwords in a `VITE_` variable. Vite includes those variables in the browser bundle. The supplied project public configuration is saved only in the ignored `.env.local` for this checkout.
 
----
+## Initialize Supabase
 
-## 📁 Repository Structure
+The connected account must have access to the target project. The public key cannot initialize the database.
 
-```
-hermes-hulog/
-├── public/
-│   ├── mascots/               # Official Hestia poses (idle, done, thinking, etc.)
-│   ├── fonts/                 # Plus Jakarta Sans OFL web fonts
-│   └── hermes-mark.svg        # Official Hermes Wing glyph
-├── src/
-│   ├── data/
-│   │   ├── courses.ts         # FRP 101–108 course titles & metadata
-│   │   ├── questions.ts       # 62 daily micro-learning cards & answer keys
-│   │   ├── collectibles.ts    # 6 Cultural Exhibition categories & wearable attire
-│   │   └── types.ts           # TypeScript interfaces for questions & courses
-│   ├── lib/
-│   │   ├── users.ts           # Player registration, login, and answer event logging
-│   │   ├── customQuestions.ts # Admin dynamic question engine (+ Add Question)
-│   │   ├── statistics.ts      # Real-time answer analytics computed from user data
-│   │   ├── date.ts            # Asia/Manila uniform date calculations
-│   │   ├── schedule.ts        # Nationwide deterministic 3-card daily schedule
-│   │   ├── progress.ts        # Local player progression & Sunday Basag rewards
-│   │   └── sound.ts           # WebAudio coin clink & Sunday basag audio
-│   ├── components/
-│   │   ├── Alkansya.tsx       # SVG bamboo coin bank with fill levels & coin drop
-│   │   ├── HestiaMascot.tsx   # Mascot display supporting poses & equipped looks
-│   │   ├── Header.tsx         # Hermes Academy top navigation & player profile modal
-│   │   └── PlayerLayout.tsx   # Mobile-friendly layout with bottom navigation bar
-│   ├── pages/
-│   │   ├── Home.tsx           # Clean Alkansya sanctuary home & daily drop action
-│   │   ├── Play.tsx           # 3-card interactive micro-game (Scam, Sort, etc.)
-│   │   ├── Collection.tsx     # English exhibition shelf with 6 heritage categories
-│   │   └── admin/
-│   │       ├── AdminLayout.tsx    # Admin passcode gate (Default: hestia2026)
-│   │       ├── AdminOverview.tsx  # Curriculum metrics & today's schedule
-│   │       ├── AdminQuestions.tsx # Filterable bank with "+ Add Question" modal
-│   │       ├── AdminCalendar.tsx  # Full year calendar schedule viewer
-│   │       └── AdminStatistics.tsx# Registered user data table & response analytics
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css
-├── package.json
-└── vite.config.ts
-```
+1. Inspect the existing schema first. Apply `supabase/migrations/202610160001_hulog.sql` to a fresh project, or reconcile it with an existing schema before applying it. The migration is intentionally not a destructive reset.
+2. In Supabase Auth settings, enable email/password signup and disable **Confirm email**. Players only enter a username/password; the app maps usernames to internal identifiers such as `name@players.hulog.internal`. There is no email recovery flow for these identifiers. Set appropriate Auth rate limits for public signup.
+3. Set server environment variables `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `HULOG_ADMIN_PASSWORD` in a secure terminal. Use the requested initial administrator password for the last variable. Do not store it in source control.
+4. Run `npm run seed`. It imports 112 curriculum cards and 48 collectibles, then creates or verifies the reserved `hermeshulog` account with an administrator role. Existing seeded accounts are verified without resetting their passwords. The script refuses to promote an unmarked pre-existing identity.
+5. Verify login, registration, refresh persistence, player isolation, and administrator access against the live project.
 
----
+The seed is idempotent and preserves edits to existing questions. Run `node scripts/build-seed.mjs` to regenerate its input after changing the source curriculum or collection catalog. Collection rewards rotate across shelves, including wearables, instead of exhausting one shelf first.
 
-## 🏛️ Collection Shelf Exhibition & Hestia Wearable Attire
+## Authorization and persistence
 
-The Collection Shelf features 6 authentic exhibition categories in English, showcasing authentic Filipino items:
+Supabase Auth owns password hashes in `auth.users`; there is deliberately no public `profiles.password_hash` column. Profiles contain account identity, role, coin/streak summaries, equipped outfit, and validated progress JSON.
 
-1. **Philippine Money & Numismatics** (*Salapi ng Pilipinas*): Piloncitos, 1903 Silver Peso, WWII Guerilla Emergency Note, Central Bank 1949 Series, Ang Bagong Lipunan, New Generation Currency, 1000-Piso Polymer Eagle.
-2. **Philippine National Symbols & Treasures** (*Pambansang mga Bagay sa Pilipinas*): Sampaguita, Narra, Agila ng Pilipinas, Anahaw, Arnis Baston, Kalabaw, Manggang Kalabaw, Bahay Kubo.
-3. **Ancient Philippine Artifacts & Pottery** (*Sinaunang Kagamitan at Antigo*): Kawayang Alkansya, Palayok na Luwad ng Tiwi, Manunggul Burial Jar, Maitum Anthropomorphic Pottery, Golden Tara of Agusan, Butuan Balangay, Lantaka Swivel Cannon, Sungkaang Kahoy.
-4. **Philippine Farm & Rural Life** (*Karaniwang Makikita sa Bukid*): Araro at Pamatok, Bilaong Kawayan at Bakol, Itak ng Magsasaka, Karit sa Pag-aani, Dulos, Kabyawan ng Tubo, Bangkong Kahoy sa Silong, Bayong na Banig.
-5. **Hestia's Wearable National Costumes** (*Pambansang Damit na Masusuot ni Hestia*): Baro't Sayang Maria Clara, Embroidered Barong Tagalog, Traje de Mestiza with Butterfly Sleeves, T'boli T'nalak Regalia with Hawk Bells, Inaul Royal Malong, Yakan Weave, Visayan Kimona & Salakot, Kalinga Tapis.
-6. **Philippine Aswang & Mythical Looks** (*Mga Aswang at Nilalang — New Look ni Hestia*): Mistikong Tikbalang, Midnight Bat-Winged Manananggal, Balete Chieftain Kapre, Bakunawa Moon-Dragon, Luminescent Coral Sirena, Maria Makiling Diwata, Nuno sa Punso Earth Spirit, Clever Tiyanak Imp.
+All exposed tables have RLS. Players can read their own profile, answers, and unlocks. Administrators can read player metrics and edit questions. Client code cannot directly update profiles, roles, coins, answer history, or unlocks. Validated SQL functions score today's scheduled questions, prevent duplicate rewards, save daily completion, award Sunday collectibles, verify wearable ownership, and change roles. Self-demotion is blocked.
 
-> **Dress-Up Feature**: Clicking any costume or aswang mythical look allows players to click **"Wear this Look on Hestia"**. Hestia's active avatar immediately wears the equipped look throughout the application!
+Saving waits for the server before confirming completion. Guest play is gated by login. Credentials and demo users from the former browser-only prototype are not imported or reused. Sessions persist through the Supabase client, and account switching reloads account-specific progress.
 
----
+## Game and administration
 
-## 🔑 Admin Portal
+- `/`: Daily drop, total coins, forgiving streak, weekly tracker, and Sunday reward reveal.
+- `/play`: Three scheduled cards. Questions and choices use Filipino, with optional English context. Sorting submissions are graded on the server. Coin feedback uses Web Audio synthesis and local CSS animation; there are no external audio assets.
+- `/koleksyon`: Aparador with Philippine money, national/cultural symbols, farm life, traditional attire, and mythology forms. Unlocked wearable layers visibly change the official Hestia artwork.
+- `/admin/questions`: Create/edit/delete questions, set a specific date or recurring weekday, assign slots 1–3, and inspect the calendar. One card per date/weekday and slot prevents ambiguous schedules. Exact dates take priority over recurrence, then the seeded rotation fills remaining slots.
+- `/admin/users`: Registered usernames, creation dates, coins, streaks, collection counts, and promote/demote controls.
+- `/admin`: Accuracy, daily activity in Philippine time, and commonly missed questions, computed from actual answer records.
 
-1. Navigate to `/admin` in your web browser (or click the **Admin** button in the header).
-2. Enter the admin passcode:
-   ```text
-   hestia2026
-   ```
-   *(Can be customized via `VITE_ADMIN_PASSCODE` in environment variables).*
-3. In the Admin Portal:
-   - **Add Questions / Games**: Click `+ Add Question / Game` to dynamically create new cards (Scam o Legit?, Tama o Mali?, Multiple Choice, Sweldo Sort) without modifying code.
-   - **Registered Users Table**: View all registered sample players, joined dates, total questions answered, correct responses, and personal accuracy rates.
-   - **User Answer History**: Inspect individual user response logs to see exact choices and answers submitted.
-   - **Question Performance Table**: View accuracy rates, attempt counts, and common misconceptions generated from registered user answers.
-   - **Curriculum Calendar**: View the daily 3-card schedule rotation across all 365 days of the year.
+Admin navigation and routes require `profiles.is_admin = true`; the database independently checks permissions. Legacy calendar/statistics URLs redirect to the consolidated tabs.
 
----
+## Checks
 
-## 💻 Local Development
+- `npm run typecheck`: strict TypeScript checks.
+- `npm run build`: TypeScript plus production Vite build.
+- `npm run test:db`: applies the migration to embedded PostgreSQL with test Auth roles, imports the curriculum/catalog, and tests isolation, scoring, replay prevention, role changes, reserved-admin protection, reward idempotency, scheduling overrides, and anonymous denial. This does not replace live Supabase Auth integration tests.
 
-```bash
-# 1. Install dependencies
-npm install
+## Deploy on Vercel
 
-# 2. Run the development server
-npm run dev
+Import the repository using Vercel's Vite framework preset. Set the two public Supabase environment variables in **Preview** and **Production**. Build command: `npm run build`. Output: `dist`. `vercel.json` supplies SPA rewrites so direct route visits resolve correctly. Initialize the database and Auth settings before sending players to the preview.
 
-# 3. Build for production
-npm run build
-```
-
-Open `http://localhost:5173` in your web browser to start exploring Hermes Hulog.
+The local checkout is implemented and build/database-tested. Live migration, Auth/admin seeding, authenticated browser testing, GitHub publication, and Vercel deployment require authorized access and are not implied by a passing local build.

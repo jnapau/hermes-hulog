@@ -21,6 +21,44 @@
 @tailwind components;
 @tailwind utilities;
 
+.auth-dialog { width: min(92vw, 420px); padding: 28px; border-radius: 16px; background: #fffaf0; color: #392616; box-shadow: 0 20px 70px #301b1740; }
+.auth-dialog::backdrop { background: #24190eb3; }
+.field { display: block; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #b7a287; border-radius: 8px; color: #302417; background: #fffefa; font-size: 14px; }
+.field::placeholder { color: #76644e; }
+:focus-visible { outline: 3px solid #a65215; outline-offset: 3px; }
+::selection { background: #f5c975; color: #392616; }
+input,textarea { caret-color: #a65215; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+.cloud-error { position: fixed; left: 16px; right: 16px; bottom: 18px; z-index: 100; max-width: 760px; margin: auto; display:flex; align-items:center; gap:16px; padding:16px; border-radius:12px; color:#fff6e8; background:#6b2e1d; box-shadow:0 8px 32px #32170e38; font-size:14px; }
+.cloud-error span { flex:1; }
+.cloud-error button { text-decoration:underline; }
+.admin-header { padding:20px 28px; display:flex; align-items:center; gap:24px; flex-wrap:wrap; background:#fffdf7; border-bottom:1px solid #e5d5ba; }
+.admin-header nav { display:flex; gap:12px; flex-wrap:wrap; }
+.admin-header nav a { padding:8px 12px; border-radius:8px; font-size:14px; }
+.admin-header nav a.active { background:#6b422a; color:#fff8e9; }
+.data-table { width:100%; min-width:540px; text-align:left; font-size:14px; background:#fffdf8; border-radius:12px; overflow:hidden; }
+.data-table th,.data-table td { padding:16px; border-bottom:1px solid #eadcc7; }
+.data-table th { background:#f0e4cf; color:#65452c; }
+.data-table td { font-variant-numeric:tabular-nums; }
+.editor-form { padding:24px; border-radius:12px; background:#fffdf7; display:grid; gap:18px; }
+.editor-form label { font-size:14px; font-weight:600; }
+.analytics-totals { display:flex; flex-wrap:wrap; gap:40px; padding:28px 0; border-bottom:1px solid #d4bea0; }
+.analytics-totals dt { font-size:14px; color:#735b44; }
+.analytics-totals dd { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+.player-stats { display:flex; justify-content:space-between; gap:12px; margin:20px 0; padding:14px 0; border-block:1px solid #ddc6a6; }
+.player-stats dt { color:#755339; font-size:11px; }
+.player-stats dd { margin-top:4px; font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+meter { accent-color:#92713a; height:16px; }
+.hestia-costume { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+.coin-scene .anim-coin-drop { animation:coin-deposit .9s cubic-bezier(.22,.61,.36,1) both; }
+.coin-scene { position:absolute; top:0; left:50%; width:28px; margin-left:-14px; }
+@keyframes coin-deposit { 0% { transform:translateY(-65px) rotateY(0); opacity:0; } 15% {opacity:1;} 52% {transform:translateY(17px) rotateY(360deg);} 68% {transform:translateY(4px) rotateY(500deg);} 85% {transform:translateY(20px) scale(.8) rotateY(720deg);opacity:1;} 100% {transform:translateY(27px) scale(.2) rotateY(800deg);opacity:0;} }
+.coin-sparkles { position:absolute; top:33px; left:14px; }
+.coin-sparkles i { position:absolute; width:4px; height:4px; border-radius:50%; background:#e0a324; animation:coin-particle .8s .35s ease-out both; }
+@keyframes coin-particle { from { transform:rotate(var(--angle)) translateX(0);opacity:1;} to {transform:rotate(var(--angle)) translateX(30px);opacity:0;} }
+@media(max-width:600px) { .cloud-error { bottom:86px; } .admin-header {padding:16px;gap:12px;} .admin-header nav {width:100%;gap:4px;} .admin-header nav a {font-size:12px;padding:8px;} .editor-form {padding:16px;} }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
@@ -126,3 +164,6 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.collection-dialog { max-width:min(94vw,460px); max-height:90dvh; overflow:auto; background:transparent; padding:8px; color:#392616; }
+.collection-dialog::backdrop { background:#24190ec0; }
