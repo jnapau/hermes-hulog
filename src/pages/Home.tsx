@@ -1,7 +1,8 @@
+import { Modal } from '../components/Modal';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Sparkles, CheckCircle2, User, UserPlus } from 'lucide-react';
-import { useProgress, canBasag, doBasag } from '../lib/progress';
+import { useProgress, canBasag, doBasag, currentStreak, totalBarya } from '../lib/progress';
 import { todayPH, weekStart, addDays, DAY_SHORT } from '../lib/date';
 import { getDaySchedule } from '../lib/schedule';
 import { HestiaMascot } from '../components/HestiaMascot';
@@ -13,23 +14,27 @@ import { AuthModal } from '../components/AuthModal';
 
 export default function Home() {
   const progress = useProgress();
-  const { currentUser } = useAuth();
+  const { currentUser, ownedIds } = useAuth();
   const today = todayPH();
   const playedToday = Boolean(progress.plays[today]);
   const schedule = getDaySchedule(today);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [basagReward, setBasagReward] = useState<string | null>(null);
 
   // Weekly tracker days
   const startOfThisWeek = weekStart(today);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfThisWeek, i));
-  const readyToBasag = canBasag(progress, today);
+  const readyToBasag = canBasag(progress, today) && ownedIds.length < Object.keys(COLLECTIBLE_BY_ID).length;
 
-  const handleBasag = () => {
-    playBasag(progress.sound);
-    const rewardId = doBasag(today);
+  const handleBasag = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    const rewardId = await doBasag(today);
+    setClaiming(false);
     if (rewardId) {
+      playBasag(progress.sound);
       setBasagReward(rewardId);
     }
   };
@@ -48,7 +53,7 @@ export default function Home() {
         </button>
 
         <div className="text-right">
-          <span className="text-xs font-bold text-ink-muted">Hulog #{schedule?.hulogNumber ?? 1}</span>
+          <span className="text-xs font-bold text-ink-muted">{schedule ? `Hulog #${schedule.hulogNumber}` : 'Daily drop'}</span>
         </div>
       </div>
 
@@ -57,11 +62,11 @@ export default function Home() {
         <div>
           {currentUser ? (
             <p>
-              Signed in as <strong>{currentUser.username}</strong>. Answers are saved for admin analytics.
+              Signed in as <strong>{currentUser.username}</strong>. Your progress is saved to your account.
             </p>
           ) : (
             <p>
-              Sample integration: Register to record your answers for the Admin Panel.
+              Create an account to save your coins, streak, and collection.
             </p>
           )}
         </div>
@@ -74,6 +79,7 @@ export default function Home() {
         </button>
       </div>
 
+<dl className="player-stats"><div><dt>Total coins</dt><dd>{currentUser?.coins ?? totalBarya(progress)}</dd></div><div><dt>Current streak</dt><dd>{currentStreak(progress, today)} days</dd></div><div><dt>Collection</dt><dd>{ownedIds.length} items</dd></div></dl>
       {/* Main Sanctuary Card */}
       <div className="card p-6 flex flex-col items-center relative overflow-hidden bg-gradient-to-b from-white via-cream to-cream-deep/40 shadow-sm border border-amber-200/70">
         {/* Subtle decorative glow */}
@@ -83,15 +89,15 @@ export default function Home() {
         <div className="relative mb-3 max-w-[280px] rounded-2xl bg-white px-3.5 py-2 text-center text-xs font-medium text-ink shadow-2xs border border-amber-200">
           <p>
             {playedToday
-              ? "Magaling! You've dropped your coin for today. See you tomorrow!"
-              : 'Isang hulog araw-araw. Ready for your 60-second micro-learning habit?'}
+              ? "Well done! You've dropped your coin for today. See you tomorrow!"
+              : 'One drop every day. Ready for your 60-second micro-learning habit?'}
           </p>
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-amber-200 rotate-45" />
         </div>
 
         {/* Mascot & Alkansya Center Stage */}
         <div className="flex items-end justify-center gap-1 my-3">
-          <Alkansya fillPercentage={playedToday ? 80 : 45} />
+          <Alkansya fillPercentage={playedToday ? 80 : 15} animated={Boolean(basagReward)} />
           <div className="-ml-8 mb-2">
             <HestiaMascot
               pose={playedToday ? 'done' : 'idle'}
@@ -129,23 +135,24 @@ export default function Home() {
         {readyToBasag && (
           <div className="mt-2 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-flame p-4 text-center shadow-md animate-bounce">
             <h4 className="font-extrabold text-cocoa text-sm flex items-center justify-center gap-1.5">
-              <Sparkles className="h-4 w-4" /> Break the Alkansya! (Sunday Basag)
+              <Sparkles className="h-4 w-4" /> Open your weekly reward
             </h4>
             <p className="text-xs text-cocoa/90 my-1">
               You saved consistently all week. Reveal your special cultural reward!
             </p>
             <button
+              disabled={claiming}
               onClick={handleBasag}
               className="mt-2 rounded-xl bg-cocoa px-4 py-2 text-xs font-bold text-amber-200 hover:bg-cocoa/90 shadow transition"
             >
-              Break the Alkansya 🎋
+              Open weekly reward
             </button>
           </div>
         )}
 
         {/* Basag reward reveal modal */}
         {basagReward && COLLECTIBLE_BY_ID[basagReward] && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm anim-pop">
+          <Modal onClose={() => setBasagReward(null)} label="Weekly collection reward">
             <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center border-4 border-amber-300 shadow-2xl">
               <div className="text-5xl my-2">{COLLECTIBLE_BY_ID[basagReward].emoji}</div>
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800">
@@ -164,10 +171,10 @@ export default function Home() {
                 onClick={() => setBasagReward(null)}
                 className="btn-flame w-full py-2.5 text-sm font-bold"
               >
-                Place on Collection Shelf ✨
+                View in your collection
               </button>
             </div>
-          </div>
+          </Modal>
         )}
 
         {/* Week Day Tracker */}

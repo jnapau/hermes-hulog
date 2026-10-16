@@ -1,29 +1,38 @@
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { CloudStatus } from './components/CloudStatus';
+import AdminUsers from './pages/admin/AdminUsers';
+const QuestionEditor = lazy(() => import('./pages/admin/QuestionEditor'));
+const DashboardAnalytics = lazy(() => import('./pages/admin/DashboardAnalytics'));
+import { getAllQuestions } from './lib/customQuestions';
+import { useAuth } from './lib/users';
+import { AuthModal } from './components/AuthModal';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import PlayerLayout from './components/PlayerLayout';
 import Home from './pages/Home';
 import Play from './pages/Play';
 import Collection from './pages/Collection';
 import AdminLayout from './pages/admin/AdminLayout';
-import AdminOverview from './pages/admin/AdminOverview';
-import AdminQuestions from './pages/admin/AdminQuestions';
-import AdminCalendar from './pages/admin/AdminCalendar';
-import AdminStatistics from './pages/admin/AdminStatistics';
 
 export default function App() {
+  const { currentUser, loading } = useAuth();
+  const [, tick] = useState(0);
+  useEffect(() => { const refresh = () => tick(n => n + 1); window.addEventListener('hulog:questions', refresh); return () => window.removeEventListener('hulog:questions', refresh); }, []);
   return (
-    <Routes>
+    <><CloudStatus/>
+    <Suspense fallback={<p role="status" className="p-8">Loading…</p>}><Routes>
       <Route element={<PlayerLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/koleksyon" element={<Collection />} />
       </Route>
-      <Route path="/play" element={<Play />} />
+      <Route path="/play" element={loading ? <p className="p-8">Loading your progress…</p> : currentUser ? <Play key={`${currentUser.id}:${getAllQuestions().length > 0}`}/> : <><p className="p-8 text-center">Log in to save your daily drop.</p><AuthModal isOpen={true} onClose={() => location.assign('/')}/></>} />
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminOverview />} />
-        <Route path="questions" element={<AdminQuestions />} />
-        <Route path="calendar" element={<AdminCalendar />} />
-        <Route path="statistics" element={<AdminStatistics />} />
+        <Route index element={<DashboardAnalytics />} />
+        <Route path="questions" element={<QuestionEditor />} />
+        <Route path="calendar" element={<Navigate to="/admin/questions" replace />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="statistics" element={<Navigate to="/admin" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></Suspense></>
   );
 }

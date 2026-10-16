@@ -1,3 +1,4 @@
+import { Modal } from '../components/Modal';
 import { useState } from 'react';
 import { useProgress, totalBarya, strongWeeks } from '../lib/progress';
 import {
@@ -7,25 +8,16 @@ import {
   CollectibleKind,
 } from '../data/collectibles';
 import { HestiaMascot } from '../components/HestiaMascot';
-import { Lock, X, Award, Compass, Shirt, Eye } from 'lucide-react';
+import { Lock, X, Award, Compass, Shirt } from 'lucide-react';
 import { useAuth, setEquippedLook } from '../lib/users';
 
 export default function Collection() {
   const progress = useProgress();
-  const { equippedLook } = useAuth();
+  const { equippedLook, ownedIds: savedOwnedIds } = useAuth();
   const barya = totalBarya(progress);
   const weeksCount = strongWeeks(progress);
 
-  // Allow custom demo unlocked state stored in localStorage for instant testing
-  const [demoUnlockedAll, setDemoUnlockedAll] = useState(() => {
-    return localStorage.getItem('hulog.demo_unlocked_all') === 'true';
-  });
-
-  const baseOwnedIds = new Set(Object.values(progress.basag || {}));
-  // If demo unlocked is true, all items are unlocked for inspection & dress-up demo
-  const ownedIds = demoUnlockedAll
-    ? new Set(COLLECTIBLES.map((c) => c.id))
-    : new Set([...baseOwnedIds, 'antigo-kawayang-alkansya']); // starter item always unlocked
+  const ownedIds = new Set(savedOwnedIds);
 
   const [selectedItem, setSelectedItem] = useState<Collectible | null>(null);
   const [activeShelf, setActiveShelf] = useState<'all' | CollectibleKind>('all');
@@ -37,11 +29,6 @@ export default function Collection() {
 
   const totalUnlocked = COLLECTIBLES.filter((c) => ownedIds.has(c.id)).length;
 
-  const handleToggleDemoUnlock = () => {
-    const next = !demoUnlockedAll;
-    setDemoUnlockedAll(next);
-    localStorage.setItem('hulog.demo_unlocked_all', String(next));
-  };
 
   const handleEquipLook = (item: Collectible) => {
     if (equippedLook === item.id) {
@@ -66,10 +53,10 @@ export default function Collection() {
         </span>
 
         <h1 className="text-2xl sm:text-3xl font-black text-amber-200 tracking-tight mt-1">
-          Collection Shelf Display
+          Aparador · Your collection
         </h1>
         <p className="text-xs text-amber-100/80 max-w-md mx-auto mt-1 leading-relaxed">
-          Exhibition of Philippine currency, national symbols, ancient pottery, farm life, and wearable traditional attire & mythical looks for Hestia.
+          Exhibition of Philippine currency, national symbols, farm life, and wearable traditional attire & mythical looks for Hestia.
         </p>
 
         {/* Active Equipped Look Banner */}
@@ -113,17 +100,6 @@ export default function Collection() {
           </div>
         </div>
 
-        {/* Sample / Demo Toggle for evaluators */}
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
-            onClick={handleToggleDemoUnlock}
-            className="rounded-full bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1 text-[11px] font-bold text-amber-200 flex items-center gap-1.5 transition"
-            title="Toggle to view all collectibles and dress up Hestia immediately in this demo"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>{demoUnlockedAll ? 'Reset Unlocked (Normal View)' : 'Sample Mode: Unlock All for Demo ✨'}</span>
-          </button>
-        </div>
       </div>
 
       {/* Visual Display Shelf Selector Bar */}
@@ -139,6 +115,7 @@ export default function Collection() {
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
           <button
+            aria-pressed={activeShelf === 'all'}
             onClick={() => setActiveShelf('all')}
             className={`rounded-2xl px-3.5 py-2 text-xs font-extrabold whitespace-nowrap transition flex items-center gap-1.5 ${
               activeShelf === 'all'
@@ -147,12 +124,13 @@ export default function Collection() {
             }`}
           >
             <span>🏛️</span>
-            <span>Shelf Display Showcase</span>
+            <span>All shelves</span>
           </button>
 
           {SHELF_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
+              aria-pressed={activeShelf === cat.id}
               onClick={() => setActiveShelf(cat.id)}
               className={`rounded-2xl px-3.5 py-2 text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                 activeShelf === cat.id
@@ -223,7 +201,7 @@ export default function Collection() {
                             ? 'bg-gradient-to-b from-amber-100 to-amber-200 border-2 border-flame shadow-md ring-2 ring-flame'
                             : isUnlocked
                             ? 'bg-gradient-to-b from-white to-[#FFF6E6] border-2 border-amber-300 shadow-sm hover:scale-[1.03] hover:shadow-md'
-                            : 'bg-stone-100/80 border border-stone-300/80 opacity-60 hover:opacity-80'
+                            : 'bg-stone-100/80 border border-stone-300/80 '
                         }`}
                       >
                         {/* Stand Top Glow */}
@@ -278,7 +256,7 @@ export default function Collection() {
 
       {/* Cultural Heritage Backstory & Wearable Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm anim-pop">
+        <Modal onClose={() => setSelectedItem(null)} label="Collection item details">
           <div className="relative w-full max-w-md rounded-3xl bg-gradient-to-b from-[#FFFDF9] to-[#FBF4E6] p-6 text-center border-4 border-[#854D0E] shadow-2xl">
             <button
               onClick={() => setSelectedItem(null)}
@@ -354,7 +332,7 @@ export default function Collection() {
               Close Details
             </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

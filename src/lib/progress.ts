@@ -1,7 +1,9 @@
 /**
- * Player progress — stored only on this device (localStorage).
- * Hulog is a 100% private personal sanctuary: nothing here is ever sent anywhere.
+ * Player progress synchronized to the authenticated Supabase profile.
+ * Database functions validate rewards before persisting changes.
  */
+import { supabase, reportError } from './supabase';
+import { getCurrentUser, refreshAccount } from './users';
 import { useSyncExternalStore } from 'react';
 import { COLLECTIBLES } from '../data/collectibles';
 import { addDays, dayOfWeek, diffDays, weekStart, type ISODate } from './date';
@@ -26,7 +28,6 @@ export interface Progress {
   sound: boolean;
 }
 
-const KEY = 'hulog.progress.v1';
 const MAX_REST_TOKENS = 3;
 
 const DEFAULT: Progress = {
@@ -41,27 +42,28 @@ const DEFAULT: Progress = {
   sound: true,
 };
 
-function load(): Progress {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...DEFAULT };
-    return { ...DEFAULT, ...(JSON.parse(raw) as Partial<Progress>) };
-  } catch {
-    return { ...DEFAULT };
-  }
-}
-
-let state: Progress = typeof window === 'undefined' ? { ...DEFAULT } : load();
+let state: Progress = { ...DEFAULT };
 const listeners = new Set<() => void>();
 
-function save(next: Progress) {
-  state = next;
+window.addEventListener('hulog:hydrate', (event) => { state = { ...DEFAULT, ...(event as CustomEvent).detail }; listeners.forEach(l => l()); });
+let queue: Promise<unknown> = Promise.resolve();
+function save(next: Progress): Promise<void> {
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    if (getCurrentUser()) {
+      const owner = getCurrentUser()!.id;
+      queue = queue.catch(() => {}).then(async () => {
+        if (getCurrentUser()?.id !== owner) return;
+        const { data, error } = await supabase.rpc('save_progress', { p_progress: next });
+        if (error) { reportError(error.message); await refreshAccount(); throw error; }
+        if (getCurrentUser()?.id === owner) { state = { ...DEFAULT, ...data }; listeners.forEach(l => l()); }
+      });
+      void queue.catch(() => {});
+    }
   } catch {
     /* storage full / private mode — keep in memory */
   }
   listeners.forEach((l) => l());
+  return queue.then(() => {});
 }
 
 export function useProgress(): Progress {
@@ -80,11 +82,11 @@ export function getProgress(): Progress {
 }
 
 export function updateSettings(patch: Partial<Pick<Progress, 'checkinTime' | 'ritual' | 'sound'>>) {
-  save({ ...state, ...patch });
+  void save({ ...state, ...patch }).catch(() => {});
 }
 
 export function resetProgress() {
-  save({ ...DEFAULT });
+  void save({ ...DEFAULT }).catch(() => {});
 }
 
 // ── Derived stats ───────────────────────────────────────────────────────────
@@ -223,7 +225,7 @@ function currentStreakWithTokens(p: Progress, today: ISODate, missed: number): n
 // ── Actions ─────────────────────────────────────────────────────────────────
 
 /** Save today's completed Hulog. Applies Pahinga tokens and awards new ones. */
-export function recordPlay(today: ISODate, results: boolean[]): void {
+export async function recordPlay(today: ISODate, results: boolean[]): Promise<void> {
   if (state.plays[today]) return;
   const next: Progress = { ...state, plays: { ...state.plays }, restDays: [...state.restDays] };
 
@@ -250,13 +252,14 @@ export function recordPlay(today: ISODate, results: boolean[]): void {
   }
 
   next.bestStreak = Math.max(next.bestStreak, currentStreak(next, today));
-  save(next);
+  await save(next);
+  await refreshAccount();
 }
 
-export function completeHakbang(today: ISODate): void {
+export async function completeHakbang(today: ISODate): Promise<void> {
   const rec = state.plays[today];
   if (!rec || rec.hakbang) return;
-  save({
+  await save({
     ...state,
     ginto: state.ginto + 5,
     plays: { ...state.plays, [today]: { ...rec, hakbang: true } },
@@ -268,12 +271,11 @@ export function canBasag(p: Progress, today: ISODate): boolean {
 }
 
 /** Break the alkansya on Sunday — returns the collectible id that was revealed. */
-export function doBasag(today: ISODate): string | null {
+export async function doBasag(today: ISODate): Promise<string | null> {
   if (!canBasag(state, today)) return null;
   const owned = new Set(Object.values(state.basag));
   const next = COLLECTIBLES.find((c) => !owned.has(c.id)) ?? COLLECTIBLES[Object.keys(state.basag).length % COLLECTIBLES.length];
-  save({ ...state, basag: { ...state.basag, [weekStart(today)]: next.id } });
-  return next.id;
+  try { await save({ ...state, basag: { ...state.basag, [weekStart(today)]: next.id } }); await refreshAccount(); return state.basag[weekStart(today)] || null; } catch { return null; }
 }
 
 // ── Ranks ───────────────────────────────────────────────────────────────────

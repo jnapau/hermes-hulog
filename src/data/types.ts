@@ -32,6 +32,9 @@ export interface QuestionCommunityStats {
 }
 
 export interface Question {
+  scheduledDate?: string | null;
+  recurringDay?: number | null;
+  slot?: number;
   id: string;
   course: CourseCode;
   tier: FinancialTier;

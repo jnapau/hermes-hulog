@@ -19,19 +19,19 @@ export default function PlayerLayout() {
             end
             className={({ isActive }) =>
               `flex flex-col items-center gap-1 py-1 px-6 text-xs font-bold transition ${
-                isActive ? 'text-flame-deep scale-105' : 'text-ink-muted opacity-75'
+                isActive ? 'text-cocoa bg-amber-100 rounded-xl' : 'text-ink-muted opacity-75'
               }`
             }
           >
             <Home className="h-5 w-5" />
-            <span>Alkansya</span>
+            <span>Home</span>
           </NavLink>
 
           <NavLink
             to="/koleksyon"
             className={({ isActive }) =>
               `flex flex-col items-center gap-1 py-1 px-6 text-xs font-bold transition ${
-                isActive ? 'text-flame-deep scale-105' : 'text-ink-muted opacity-75'
+                isActive ? 'text-cocoa bg-amber-100 rounded-xl' : 'text-ink-muted opacity-75'
               }`
             }
           >

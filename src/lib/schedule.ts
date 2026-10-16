@@ -11,10 +11,9 @@
  *   Sunday   → Card 1 "Sunday Boss"       (Shock Simulator, FRP 108)
  *              Card 2 + 3 "Weekly Review" (spaced reinforcement of the week)
  */
-import { isBossCard } from '../data/questions';
-import type { CourseCode, Question } from '../data/types';
+import type { Question } from '../data/types';
 import { addDays, dayOfWeek, diffDays, type ISODate } from './date';
-import { getAllQuestions } from './customQuestions';
+import { dailyQuestions, getAllQuestions } from './customQuestions';
 
 /** Day #1 of Hulog. Monday, October 12, 2026. */
 export const SCHEDULE_START: ISODate = '2026-10-12';
@@ -48,48 +47,6 @@ export interface DaySchedule {
   tags: string[];
 }
 
-const COURSE_ORDER: CourseCode[] = [101, 102, 103, 104, 105, 106, 107];
-
-export function getRotation(): Question[] {
-  const all = getAllQuestions();
-  const byCourse = COURSE_ORDER.map((c) =>
-    all.filter((q) => q.course === c && !isBossCard(q)),
-  );
-  const longest = Math.max(...byCourse.map((l) => l.length), 1);
-  const pool: Question[] = [];
-  for (let i = 0; i < longest; i++) {
-    for (const list of byCourse) {
-      if (list[i]) pool.push(list[i]);
-    }
-  }
-  return pool.length > 0 ? pool : all;
-}
-
-export function getBossCards(): Question[] {
-  const all = getAllQuestions();
-  const boss = all.filter(isBossCard);
-  return boss.length > 0 ? boss : all;
-}
-
-const REVIEW_OFFSETS = [2, 6, 14];
-
-const mod = (n: number, m: number) => ((n % m) + m) % m;
-
-function weekdaysBefore(date: ISODate): number {
-  const days = diffDays(SCHEDULE_START, date);
-  const fullWeeks = Math.floor(days / 7);
-  let count = fullWeeks * 6;
-  for (let i = fullWeeks * 7; i < days; i++) {
-    if (dayOfWeek(addDays(SCHEDULE_START, i)) !== 0) count++;
-  }
-  return count;
-}
-
-function sundaysBefore(date: ISODate): number {
-  const days = diffDays(SCHEDULE_START, date);
-  return days - weekdaysBefore(date);
-}
-
 function seasonalTags(date: ISODate): string[] {
   const [, m, d] = date.split('-').map(Number);
   const tags: string[] = [];
@@ -112,38 +69,10 @@ function seasonalTags(date: ISODate): string[] {
 export function getDaySchedule(date: ISODate): DaySchedule | null {
   const index = diffDays(SCHEDULE_START, date);
   if (index < 0) return null;
-  const rotation = getRotation();
-  const bossCards = getBossCards();
-  const L = rotation.length || 1;
-  const isSunday = dayOfWeek(date) === 0;
-  const n = weekdaysBefore(date);
-  let cards: ScheduledCard[];
+  const assigned = dailyQuestions(date);
+  if (assigned.length !== 3) return null;
+  return { date, hulogNumber: index + 1, isSunday: dayOfWeek(date) === 0, cards: assigned.map(question => ({ question, role: 'new' as CardRole })), tags: seasonalTags(date) };
 
-  if (isSunday) {
-    const boss = bossCards[mod(sundaysBefore(date), bossCards.length)];
-    cards = [
-      { question: boss, role: 'boss' },
-      { question: rotation[mod(2 * n - 2, L)], role: 'review' },
-      { question: rotation[mod(2 * n - 8, L)], role: 'review' },
-    ];
-  } else {
-    const newA = rotation[mod(2 * n, L)];
-    const newB = rotation[mod(2 * n + 1, L)];
-    const offset = REVIEW_OFFSETS[n % REVIEW_OFFSETS.length];
-    let reviewIdx = 2 * n - offset;
-    if (reviewIdx < 0) reviewIdx = 2 * n - 2;
-    const review: ScheduledCard =
-      reviewIdx >= 0
-        ? { question: rotation[mod(reviewIdx, L)], role: 'review' }
-        : { question: rotation[L - 1], role: 'new' };
-    cards = [
-      { question: newA, role: 'new' },
-      review,
-      { question: newB, role: 'personal' },
-    ];
-  }
-
-  return { date, hulogNumber: index + 1, isSunday, cards, tags: seasonalTags(date) };
 }
 
 export interface Appearance {

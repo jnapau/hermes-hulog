@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { writeFileSync } from 'node:fs';
+const { outputFiles } = await build({ stdin: { contents: "export { QUESTIONS } from './src/data/questions'; export { COLLECTIBLES } from './src/data/collectibles';", resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm', platform: 'node' });
+const { QUESTIONS, COLLECTIBLES } = await import(`data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`);
+const questions = QUESTIONS.map(q => ({ id: q.id, text: q.promptFilipino, choices: q.options || q.items || [], correct_answer: q.answer || '', explanation: q.why, category: q.tier, scheduled_date: null, recurring_day: null, slot: q.format === 'Scam o Legit?' ? 1 : q.kind === 'sort' ? 2 : 3, payload: q }));
+const shelves = [...new Set(COLLECTIBLES.map(c => c.kind))].map(kind => COLLECTIBLES.filter(c => c.kind === kind));
+const rewardOrder = Array.from({length: Math.max(...shelves.map(s => s.length))}, (_,i) => shelves.map(s => s[i]).filter(Boolean)).flat();
+const collection_items = rewardOrder.map((c,i) => ({ id: c.id, category: c.kind, wearable: Boolean(c.wearable), reward_order: i }));
+writeFileSync('supabase/seed-data.json', JSON.stringify({ questions, collection_items },null,2)+'\n');
+console.log(`Prepared ${questions.length} curriculum questions and ${collection_items.length} collection items.`);

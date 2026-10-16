@@ -4,24 +4,35 @@ import { ArrowLeft, Check, Sparkles, BarChart3, Languages } from 'lucide-react';
 import { todayPH } from '../lib/date';
 import { getDaySchedule, ROLE_LABEL, ROLE_STYLE } from '../lib/schedule';
 import { recordPlay, completeHakbang, useProgress } from '../lib/progress';
-import { playClink, playSoft } from '../lib/sound';
+import { playClink, playSoft, unlockAudio } from '../lib/sound';
 import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';
 import { TIER_STYLE } from '../data/types';
 
-import { recordUserAnswer, getAllAnswerLogs } from '../lib/users';
+import { recordUserAnswer, getAllAnswerLogs, getCurrentUsername } from '../lib/users';
+
+const SORT_LABELS: Record<string,string> = {Need:'Pangangailangan',Want:'Kagustuhan',Obligation:'Obligasyon',Ipon:'Ipon'};
 
 export default function Play() {
   const navigate = useNavigate();
   const today = todayPH();
   const schedule = getDaySchedule(today);
   const progress = useProgress();
+  const saved = schedule?.cards.map(c => getAllAnswerLogs().find(a => a.username === getCurrentUsername() && a.date === today && a.questionId === c.question.id)) || [];
+  const firstMissing = saved.findIndex(a => !a);
+  const resumeIndex = saved.length === 3 && firstMissing === -1 ? 2 : Math.max(0,firstMissing);
+  const resumeComplete = saved.length === 3 && firstMissing === -1;
 
-  const [cardIndex, setCardIndex] = useState(0);
-  const [results, setResults] = useState<boolean[]>([]);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [sortMapping, setSortMapping] = useState<Record<string, string>>({});
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [answerError, setAnswerError] = useState('');
+  const [cardIndex, setCardIndex] = useState(resumeIndex);
+  const [results, setResults] = useState<boolean[]>(() => saved.slice(0,resumeComplete ? 3 : resumeIndex).map(a => a!.isCorrect));
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(resumeComplete ? saved[2]?.userChoice || null : null);
+  const [sortMapping, setSortMapping] = useState<Record<string, string>>(() => {
+    if (resumeComplete && schedule?.cards[2].question.kind === 'sort') { try { return JSON.parse(saved[2]!.userChoice); } catch { return {}; } }
+    return {};
+  });
+  const [showFeedback, setShowFeedback] = useState(resumeComplete);
   const [isCompleted, setIsCompleted] = useState(false);
   const [hakbangDone, setHakbangDone] = useState(false);
   const [droppingCoin, setDroppingCoin] = useState(false);
@@ -30,7 +41,7 @@ export default function Play() {
   if (!schedule) {
     return (
       <div className="mx-auto max-w-md p-6 text-center">
-        <p className="text-sm font-bold text-ink">The daily Hulog schedule has not yet started.</p>
+        <p className="text-sm font-bold text-ink">Today’s questions could not load. Please try again shortly.</p>
         <Link to="/" className="btn-flame mt-4">Return Home</Link>
       </div>
     );
@@ -56,13 +67,14 @@ export default function Play() {
   const question = currentScheduledCard.question;
   const tierStyle = TIER_STYLE[question.tier] || TIER_STYLE['Cash Management'];
 
-  const handleSelectAnswer = (ansKey: string) => {
-    if (showFeedback) return;
+  const handleSelectAnswer = async (ansKey: string) => {
+    if (showFeedback || busy) return;
+    unlockAudio(progress.sound);
     setSelectedAnswer(ansKey);
-    const isCorrect = ansKey === question.answer;
-
-    // Record answer under active registered user
-    recordUserAnswer(question.id, ansKey, isCorrect, today);
+    setBusy(true); setAnswerError('');
+    let isCorrect: boolean;
+    try { isCorrect = await recordUserAnswer(question.id, ansKey, false, today); } catch (e) { setAnswerError((e as Error).message); setBusy(false); return; }
+    setBusy(false);
 
     if (isCorrect) {
       playClink(progress.sound);
@@ -78,14 +90,16 @@ export default function Play() {
   };
 
   const handleSortItem = (itemKey: string, category: string) => {
-    if (showFeedback) return;
+    if (showFeedback || busy) return;
     setSortMapping((prev) => ({ ...prev, [itemKey]: category }));
   };
 
-  const handleSortSubmit = () => {
+  const handleSortSubmit = async () => {
     if (showFeedback) return;
-    const items = question.items || [];
-    const isAllCorrect = items.every((item) => sortMapping[item.key] === item.answer);
+    setBusy(true); setAnswerError('');
+    let isAllCorrect: boolean;
+    try { isAllCorrect = await recordUserAnswer(question.id, JSON.stringify(sortMapping), false, today); } catch (e) { setAnswerError((e as Error).message); setBusy(false); return; }
+    setBusy(false);
 
     if (isAllCorrect) {
       playClink(progress.sound);
@@ -97,11 +111,12 @@ export default function Play() {
 
     const nextResults = [...results, isAllCorrect];
     setResults(nextResults);
-    recordUserAnswer(question.id, isAllCorrect ? 'SORT_CORRECT' : 'SORT_INCORRECT', isAllCorrect, today);
+
     setShowFeedback(true);
   };
 
-  const handleNextCard = () => {
+  const handleNextCard = async () => {
+    if (busy) return;
     setShowFeedback(false);
     setSelectedAnswer(null);
     setSortMapping({});
@@ -110,15 +125,16 @@ export default function Play() {
       setCardIndex(cardIndex + 1);
     } else {
       // Completed all 3 cards!
-      recordPlay(today, results);
-      setIsCompleted(true);
+      setBusy(true);
+      try { await recordPlay(today, results); setIsCompleted(true); } catch(e) {setAnswerError((e as Error).message);setShowFeedback(true);} finally {setBusy(false);}
     }
   };
 
-  const handleHakbangClaim = () => {
-    completeHakbang(today);
-    setHakbangDone(true);
-    playClink(progress.sound);
+  const handleHakbangClaim = async () => {
+    if (busy) return;
+    unlockAudio(progress.sound); setBusy(true);setAnswerError('');
+    try { await completeHakbang(today); setHakbangDone(true); playClink(progress.sound); }
+    catch(e) { setAnswerError((e as Error).message); } finally {setBusy(false);}
   };
 
   // --- RESULT VIEW ---
@@ -127,6 +143,7 @@ export default function Play() {
     return (
       <div className="mx-auto max-w-md px-4 py-8 anim-pop">
         <div className="card p-6 text-center border-2 border-amber-300">
+          {answerError && <p role="alert" className="mb-3 text-sm text-red-800">{answerError}</p>}
           <Alkansya fillPercentage={75} animated={droppingCoin} />
 
           <h2 className="text-2xl font-black text-ink mt-3">
@@ -161,7 +178,8 @@ export default function Play() {
 
             {!hakbangDone ? (
               <button
-                onClick={handleHakbangClaim}
+                disabled={busy}
+              onClick={handleHakbangClaim}
                 className="mt-3 w-full rounded-xl bg-cocoa py-2.5 text-xs font-bold text-amber-100 hover:bg-cocoa/90 transition shadow-sm"
               >
                 I will do this / Completed (+5 Gold Coins)
@@ -245,12 +263,12 @@ export default function Play() {
         <div className="card p-5 mb-3 shadow-sm border border-amber-200/90 relative">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-bold text-ink leading-relaxed">
-              {question.prompt}
+              {question.promptFilipino || question.prompt}
             </p>
             <button
               onClick={() => setShowTranslation(!showTranslation)}
               className="shrink-0 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-amber-100/50 transition"
-              title="Toggle Filipino Translation"
+              title="Toggle English context"
             >
               <Languages className="h-4 w-4" />
             </button>
@@ -260,10 +278,10 @@ export default function Play() {
           {showTranslation && question.promptFilipino && (
             <div className="mt-3 pt-3 border-t border-amber-100 bg-amber-50/70 -mx-2 -mb-2 p-3 rounded-xl border border-amber-200/60">
               <div className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
-                <span>🇵🇭 Salin sa Filipino (Translation):</span>
+                <span>English context:</span>
               </div>
               <p className="text-xs font-semibold text-cocoa leading-relaxed italic">
-                "{question.promptFilipino}"
+                {question.prompt}
               </p>
             </div>
           )}
@@ -274,13 +292,13 @@ export default function Play() {
           </div>
         </div>
 
-        {/* Interactive Play Formats */}
+        {answerError && <p role="alert" className="text-sm text-red-800 mb-3">{answerError} Please retry your answer.</p>}{busy && <p role="status">Saving your answer…</p>}{/* Interactive Play Formats */}
         {/* 1. SCAM O LEGIT? */}
         {question.format === 'Scam o Legit?' && (
           <div className="grid grid-cols-2 gap-3 my-3">
             <button
               onClick={() => handleSelectAnswer('SCAM')}
-              disabled={showFeedback}
+              disabled={showFeedback || busy}
               className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'SCAM'
                   ? 'border-scam bg-scam text-white'
@@ -291,7 +309,7 @@ export default function Play() {
             </button>
             <button
               onClick={() => handleSelectAnswer('LEGIT')}
-              disabled={showFeedback}
+              disabled={showFeedback || busy}
               className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
                 selectedAnswer === 'LEGIT'
                   ? 'border-legit bg-legit text-white'
@@ -315,7 +333,7 @@ export default function Play() {
                   : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
               }`}
             >
-              TRUE (Tama)
+              TAMA (True)
             </button>
             <button
               onClick={() => handleSelectAnswer('MALI')}
@@ -326,7 +344,7 @@ export default function Play() {
                   : 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
               }`}
             >
-              FALSE (Mali)
+              MALI (False)
             </button>
           </div>
         )}
@@ -346,10 +364,10 @@ export default function Play() {
                 }`}
               >
                 <div className="pr-2">
-                  <span>{opt.text}</span>
+                  <span>{opt.textFilipino || opt.text}</span>
                   {opt.textFilipino && opt.textFilipino !== opt.text && (
                     <span className="block text-[11px] font-normal text-ink-muted italic mt-0.5">
-                      {opt.textFilipino}
+                      {opt.text}
                     </span>
                   )}
                 </div>
@@ -371,10 +389,10 @@ export default function Play() {
                   className="rounded-xl border border-hairline bg-white p-2.5 shadow-xs flex flex-col gap-1.5"
                 >
                   <div>
-                    <span className="text-xs font-bold text-ink">{item.text}</span>
+                    <span className="text-xs font-bold text-ink">{item.textFilipino || item.text}</span>
                     {item.textFilipino && item.textFilipino !== item.text && (
                       <span className="text-[11px] text-ink-muted italic block">
-                        {item.textFilipino}
+                        {item.text}
                       </span>
                     )}
                   </div>
@@ -390,7 +408,7 @@ export default function Play() {
                             : 'bg-surface-sunk border-stone-200 text-ink-muted hover:bg-white'
                         }`}
                       >
-                        {cat}
+                        {SORT_LABELS[cat] || cat}
                       </button>
                     ))}
                   </div>
@@ -401,7 +419,7 @@ export default function Play() {
             {!showFeedback && (
               <button
                 onClick={handleSortSubmit}
-                disabled={!sortReady}
+                disabled={busy || !sortReady}
                 className="btn-flame w-full py-3 text-xs mt-2 disabled:opacity-50"
               >
                 Submit Category Sort
@@ -439,7 +457,7 @@ export default function Play() {
             const questionLogs = getAllAnswerLogs().filter((l) => l.questionId === question.id);
             const totalAttempts = questionLogs.length;
             const correctAttempts = questionLogs.filter((l) => l.isCorrect).length;
-            const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : (question.communityStats?.correctPct ?? 100);
+            const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
             const wrongLog = questionLogs.find((l) => !l.isCorrect);
             const trap = wrongLog ? `Common trap: Player chose "${wrongLog.userChoice}"` : question.communityStats?.topMisconception;
 
@@ -447,10 +465,10 @@ export default function Play() {
               <div className="my-2.5 rounded-xl border border-sky-200 bg-sky-50/70 p-2.5 text-left">
                 <div className="flex items-center justify-between text-[10px] font-extrabold text-sky-800 uppercase tracking-wider mb-1">
                   <span className="flex items-center gap-1">
-                    <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Tanong ng Bayan (Registered User Data)
+                    <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Recorded accuracy
                   </span>
                   <span>
-                    {accuracy}% correct ({totalAttempts} {totalAttempts === 1 ? 'user log' : 'user logs'})
+                    {totalAttempts ? `${accuracy}% correct` : 'No recorded answers'} ({totalAttempts} {totalAttempts === 1 ? 'user log' : 'user logs'})
                   </span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-sky-200 overflow-hidden mb-1">
@@ -469,6 +487,7 @@ export default function Play() {
           })()}
 
           <button
+            disabled={busy}
             onClick={handleNextCard}
             className="btn-flame w-full py-2.5 text-xs font-bold mt-2"
           >

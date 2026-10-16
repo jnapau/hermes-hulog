@@ -1,3 +1,4 @@
+import { HestiaLook } from './HestiaLook';
 import { useAuth } from '../lib/users';
 import { COLLECTIBLE_BY_ID } from '../data/collectibles';
 
@@ -46,6 +47,7 @@ export function HestiaMascot({
         style={{ maxHeight: height }}
       />
 
+      {currentLook && <HestiaLook id={currentLook.id}/>}
       {/* Floating look badge showing the equipped costume or aswang form */}
       {showLookBadge && currentLook && (
         <div className="absolute -bottom-2 z-10 flex items-center gap-1 rounded-full border border-amber-300 bg-white/95 px-2.5 py-0.5 text-[10px] font-black text-cocoa shadow-md backdrop-blur-xs">

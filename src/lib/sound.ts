@@ -36,6 +36,9 @@ export function playClink(enabled = true) {
   vibrate(30);
 }
 
+/** Unlock during the click gesture, before an asynchronous score request. */
+export function unlockAudio(enabled = true) { if (enabled) audio(); }
+
 export function playSoft(enabled = true) {
   if (!enabled) return;
   tone(392, 0, 0.18, 'sine', 0.08);

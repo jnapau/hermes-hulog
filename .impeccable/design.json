@@ -1,0 +1,11 @@
+{
+  "name": "Hulog",
+  "source": ["src/index.css", "tailwind.config.js"],
+  "extensionOfExistingIdentity": true,
+  "colors": {"cream":"#FFF8EC","honey":"#F5A524","cocoa":"#4A2A12","ink":"#211F1C","deepAmber":"#9B4B08","brand":"#1B50D8"},
+  "fontFamily": "Plus Jakarta Sans",
+  "focus": {"color":"#a65215","width":"3px","offset":"3px"},
+  "dialogs": {"nativeModal":true,"maxHeight":"90dvh"},
+  "motion": {"coinDrop":"900ms","respectsReducedMotion":true},
+  "verification": {"publicDesktop":true,"publicMobile":true,"authenticatedScreens":false,"reason":"Connected Supabase account lacks project access"}
+}
