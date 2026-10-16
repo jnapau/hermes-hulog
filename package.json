@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test:db": "node scripts/build-seed.mjs && node scripts/test-database.mjs",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "setup:admin": "node scripts/setup-admin.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",

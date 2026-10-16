@@ -22,6 +22,8 @@ The connected account must have access to the target project. The public key can
 
 The seed is idempotent and preserves edits to existing questions. Run `node scripts/build-seed.mjs` to regenerate its input after changing the source curriculum or collection catalog. Collection rewards rotate across shelves, including wearables, instead of exhausting one shelf first.
 
+For an interactive local administrator setup, run `npm run setup:admin`. It prompts for the server secret key and initial administrator password with hidden input, runs the same idempotent seed, and clears those values from its environment afterward. It does not write credentials to a file. It uses the URL in `.env.local`, or the supplied Hulog project URL if that file is absent.
+
 ## Authorization and persistence
 
 Supabase Auth owns password hashes in `auth.users`; there is deliberately no public `profiles.password_hash` column. Profiles contain account identity, role, coin/streak summaries, equipped outfit, and validated progress JSON.
