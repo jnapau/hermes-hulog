@@ -13,6 +13,12 @@ for(const i of seed.collection_items)await db.query('insert into collection_item
 const player='11111111-1111-4111-8111-111111111111',admin='22222222-2222-4222-8222-222222222222',other='33333333-3333-4333-8333-333333333333';
 for(const [id,username] of [[player,'player_one'],[admin,'admin_one'],[other,'player_two']]) await db.query('insert into auth.users values($1,$2)',[id,{username}]);
 await assert.rejects(() => db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',['44444444-4444-4444-8444-444444444444',{username:'hermeshulog'}]),/reserved/);
+// Mirror Auth's INSERT-before-app_metadata sequence used by admin.createUser.
+await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',['55555555-5555-4555-8555-555555555555',{username:'seed_regression'}]);
+assert.equal((await db.query("select is_admin from profiles where username='seed_regression'")).rows[0].is_admin,false);
+await db.query("update auth.users set raw_app_meta_data='{}' where id=$1",['55555555-5555-4555-8555-555555555555']);
+// Remove only this in-memory fixture so existing row-count assertions stay precise.
+await db.query('delete from auth.users where id=$1',['55555555-5555-4555-8555-555555555555']);
 await db.query('update profiles set is_admin=true where id=$1',[admin]);
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
 async function rejected(fn,pattern){await assert.rejects(fn,pattern);}
