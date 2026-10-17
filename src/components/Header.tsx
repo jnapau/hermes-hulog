@@ -28,7 +28,7 @@ export function Header() {
         </NavLink>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden sm:flex items-center gap-1 text-xs font-bold text-ink-muted">
+        {currentUser && <nav className="hidden sm:flex items-center gap-1 text-xs font-bold text-ink-muted">
           <NavLink
             to="/"
             end
@@ -53,12 +53,12 @@ export function Header() {
             <Sparkles className="h-3.5 w-3.5 text-amber-600" />
             <span>Collection Shelf</span>
           </NavLink>
-        </nav>
+        </nav>}
 
         {/* Right Actions: Registered User Account & Admin Link (Only for Hestia) */}
         <div className="flex items-center gap-2">
           {/* User Account / Sign In Pill */}
-          <button
+          {currentUser && <button
             onClick={() => setShowAuthModal(true)}
             className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100/70 hover:bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-cocoa transition shadow-2xs"
             title="Registered Player Profile"
@@ -67,7 +67,7 @@ export function Header() {
             <span className="max-w-[100px] truncate">
               {currentUser ? currentUser.username : 'Sign In'}
             </span>
-          </button>
+          </button>}
 
           {/* Admin panel entry - ONLY appears when admin (Hestia) is logged in! */}
           {isAdmin && (

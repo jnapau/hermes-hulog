@@ -5,7 +5,6 @@ const QuestionEditor = lazy(() => import('./pages/admin/QuestionEditor'));
 const DashboardAnalytics = lazy(() => import('./pages/admin/DashboardAnalytics'));
 import { getAllQuestions } from './lib/customQuestions';
 import { useAuth } from './lib/users';
-import { AuthModal } from './components/AuthModal';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import PlayerLayout from './components/PlayerLayout';
 import Home from './pages/Home';
@@ -22,9 +21,9 @@ export default function App() {
     <Suspense fallback={<p role="status" className="p-8">Loading…</p>}><Routes>
       <Route element={<PlayerLayout />}>
         <Route path="/" element={<Home />} />
-        <Route path="/koleksyon" element={<Collection />} />
+        <Route path="/koleksyon" element={currentUser ? <Collection /> : <Navigate to="/" replace />} />
       </Route>
-      <Route path="/play" element={loading ? <p className="p-8">Loading your progress…</p> : currentUser ? <Play key={`${currentUser.id}:${getAllQuestions().length > 0}`}/> : <><p className="p-8 text-center">Log in to save your daily drop.</p><AuthModal isOpen={true} onClose={() => location.assign('/')}/></>} />
+      <Route path="/play" element={loading ? <p className="p-8">Loading your progress…</p> : currentUser ? <Play key={`${currentUser.id}:${getAllQuestions().length > 0}`}/> : <Navigate to="/" replace />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<DashboardAnalytics />} />
         <Route path="questions" element={<QuestionEditor />} />

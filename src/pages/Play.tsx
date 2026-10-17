@@ -1,500 +1,108 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Check, Sparkles, BarChart3, Languages } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Check } from 'lucide-react';
 import { todayPH } from '../lib/date';
-import { getDaySchedule, ROLE_LABEL, ROLE_STYLE } from '../lib/schedule';
+import { getDaySchedule } from '../lib/schedule';
 import { recordPlay, completeHakbang, useProgress } from '../lib/progress';
 import { playClink, playSoft, unlockAudio } from '../lib/sound';
 import { HestiaMascot } from '../components/HestiaMascot';
 import { Alkansya } from '../components/Alkansya';
-import { TIER_STYLE } from '../data/types';
-
 import { recordUserAnswer, getAllAnswerLogs, getCurrentUsername } from '../lib/users';
+import { checkAnswer } from '../lib/checkAnswer';
 
 const SORT_LABELS: Record<string,string> = {Need:'Pangangailangan',Want:'Kagustuhan',Obligation:'Obligasyon',Ipon:'Ipon'};
+type Submission = { index: number; id: string; choice: string; status: 'pending' | 'saved' | 'error'; promise?: Promise<void> };
 
 export default function Play() {
-  const navigate = useNavigate();
   const today = todayPH();
   const schedule = getDaySchedule(today);
   const progress = useProgress();
   const saved = schedule?.cards.map(c => getAllAnswerLogs().find(a => a.username === getCurrentUsername() && a.date === today && a.questionId === c.question.id)) || [];
-  const firstMissing = saved.findIndex(a => !a);
-  const resumeIndex = saved.length === 3 && firstMissing === -1 ? 2 : Math.max(0,firstMissing);
-  const resumeComplete = saved.length === 3 && firstMissing === -1;
-
+  const missing = saved.findIndex(a => !a);
+  const resume = saved.length === 3 && missing === -1;
+  const [cardIndex, setCardIndex] = useState(resume ? 2 : Math.max(0, missing));
+  const [results, setResults] = useState<(boolean | undefined)[]>(() => saved.map(a => a?.isCorrect));
+  const [selected, setSelected] = useState<string | null>(resume ? saved[2]?.userChoice || null : null);
+  const [mapping, setMapping] = useState<Record<string,string>>({});
+  const [feedback, setFeedback] = useState(resume);
+  const [complete, setComplete] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [answerError, setAnswerError] = useState('');
-  const [cardIndex, setCardIndex] = useState(resumeIndex);
-  const [results, setResults] = useState<boolean[]>(() => saved.slice(0,resumeComplete ? 3 : resumeIndex).map(a => a!.isCorrect));
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(resumeComplete ? saved[2]?.userChoice || null : null);
-  const [sortMapping, setSortMapping] = useState<Record<string, string>>(() => {
-    if (resumeComplete && schedule?.cards[2].question.kind === 'sort') { try { return JSON.parse(saved[2]!.userChoice); } catch { return {}; } }
-    return {};
-  });
-  const [showFeedback, setShowFeedback] = useState(resumeComplete);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [hakbangDone, setHakbangDone] = useState(false);
-  const [droppingCoin, setDroppingCoin] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(true);
+  const [error, setError] = useState('');
+  const [syncVersion, setSyncVersion] = useState(0);
+  const [hakbang, setHakbang] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const submissions = useRef<Submission[]>([]);
+  const locked = useRef(resume);
+  const mounted = useRef(true);
+  const coinTimer = useRef<ReturnType<typeof setTimeout>>();
+  const nextButton = useRef<HTMLButtonElement>(null);
+  const prompt = useRef<HTMLHeadingElement>(null);
+  const question = schedule?.cards[cardIndex]?.question;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; clearTimeout(coinTimer.current); }; }, []);
+  useEffect(() => { if (feedback) nextButton.current?.focus(); else prompt.current?.focus(); }, [feedback, cardIndex]);
 
-  if (!schedule) {
-    return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <p className="text-sm font-bold text-ink">Today’s questions could not load. Please try again shortly.</p>
-        <Link to="/" className="btn-flame mt-4">Return Home</Link>
-      </div>
-    );
+  function sync(entry: Submission) {
+    entry.status = 'pending';
+    entry.promise = recordUserAnswer(entry.id, entry.choice, false, today).then(correct => {
+      entry.status = 'saved';
+      if (mounted.current) setResults(old => { const next = [...old]; next[entry.index] = correct; return next; });
+    }).catch(() => { entry.status = 'error'; }).finally(() => { if (mounted.current) setSyncVersion(v => v + 1); });
+    return entry.promise;
   }
-
-  // Already played today check
-  if (progress.plays[today] && !isCompleted) {
-    return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <HestiaMascot pose="done" height={130} className="mx-auto mb-3" />
-        <h2 className="text-lg font-black text-ink">You've completed today's drop!</h2>
-        <p className="text-xs text-ink-muted mt-1 mb-4">
-          Come back tomorrow to keep Hestia's flame glowing strong.
-        </p>
-        <Link to="/" className="btn-flame text-sm py-2.5">
-          Return to Alkansya
-        </Link>
-      </div>
-    );
-  }
-
-  const currentScheduledCard = schedule.cards[cardIndex];
-  const question = currentScheduledCard.question;
-  const tierStyle = TIER_STYLE[question.tier] || TIER_STYLE['Cash Management'];
-
-  const handleSelectAnswer = async (ansKey: string) => {
-    if (showFeedback || busy) return;
+  function answer(choice: string) {
+    if (!question || locked.current || busy) return;
+    locked.current = true;
+    const correct = checkAnswer(question, choice);
     unlockAudio(progress.sound);
-    setSelectedAnswer(ansKey);
-    setBusy(true); setAnswerError('');
-    let isCorrect: boolean;
-    try { isCorrect = await recordUserAnswer(question.id, ansKey, false, today); } catch (e) { setAnswerError((e as Error).message); setBusy(false); return; }
-    setBusy(false);
-
-    if (isCorrect) {
-      playClink(progress.sound);
-      setDroppingCoin(true);
-      setTimeout(() => setDroppingCoin(false), 900);
-    } else {
-      playSoft(progress.sound);
-    }
-
-    const nextResults = [...results, isCorrect];
-    setResults(nextResults);
-    setShowFeedback(true);
-  };
-
-  const handleSortItem = (itemKey: string, category: string) => {
-    if (showFeedback || busy) return;
-    setSortMapping((prev) => ({ ...prev, [itemKey]: category }));
-  };
-
-  const handleSortSubmit = async () => {
-    if (showFeedback) return;
-    setBusy(true); setAnswerError('');
-    let isAllCorrect: boolean;
-    try { isAllCorrect = await recordUserAnswer(question.id, JSON.stringify(sortMapping), false, today); } catch (e) { setAnswerError((e as Error).message); setBusy(false); return; }
-    setBusy(false);
-
-    if (isAllCorrect) {
-      playClink(progress.sound);
-      setDroppingCoin(true);
-      setTimeout(() => setDroppingCoin(false), 900);
-    } else {
-      playSoft(progress.sound);
-    }
-
-    const nextResults = [...results, isAllCorrect];
-    setResults(nextResults);
-
-    setShowFeedback(true);
-  };
-
-  const handleNextCard = async () => {
-    if (busy) return;
-    setShowFeedback(false);
-    setSelectedAnswer(null);
-    setSortMapping({});
-
-    if (cardIndex < 2) {
-      setCardIndex(cardIndex + 1);
-    } else {
-      // Completed all 3 cards!
-      setBusy(true);
-      try { await recordPlay(today, results); setIsCompleted(true); } catch(e) {setAnswerError((e as Error).message);setShowFeedback(true);} finally {setBusy(false);}
-    }
-  };
-
-  const handleHakbangClaim = async () => {
-    if (busy) return;
-    unlockAudio(progress.sound); setBusy(true);setAnswerError('');
-    try { await completeHakbang(today); setHakbangDone(true); playClink(progress.sound); }
-    catch(e) { setAnswerError((e as Error).message); } finally {setBusy(false);}
-  };
-
-  // --- RESULT VIEW ---
-  if (isCompleted) {
-    const baryaWon = results.filter(Boolean).length;
-    return (
-      <div className="mx-auto max-w-md px-4 py-8 anim-pop">
-        <div className="card p-6 text-center border-2 border-amber-300">
-          {answerError && <p role="alert" className="mb-3 text-sm text-red-800">{answerError}</p>}
-          <Alkansya fillPercentage={75} animated={droppingCoin} />
-
-          <h2 className="text-2xl font-black text-ink mt-3">
-            {baryaWon === 3 ? 'Perfect! +3 coins' : `Well Done! +${baryaWon} coins`}
-          </h2>
-          <p className="text-xs text-ink-muted mt-1">
-            Deposited into your bamboo alkansya for the upcoming Sunday break.
-          </p>
-
-          {/* 3 Results Dots */}
-          <div className="flex justify-center gap-2 my-4">
-            {results.map((r, i) => (
-              <div
-                key={i}
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black shadow-xs ${
-                  r ? 'bg-amber-400 text-cocoa' : 'bg-stone-200 text-stone-500'
-                }`}
-              >
-                {r ? '₱' : '✕'}
-              </div>
-            ))}
-          </div>
-
-          {/* Isang Hakbang Action Bridge */}
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left my-4">
-            <div className="flex items-center gap-1.5 text-xs font-extrabold text-flame-deep uppercase tracking-wider">
-              <Sparkles className="h-4 w-4" /> One Step / Isang Hakbang (+5 Gold Coins)
-            </div>
-            <p className="text-xs font-semibold text-ink mt-1.5 leading-snug">
-              {schedule.cards[2]?.question.hakbang || 'Review your monthly essential expense baseline.'}
-            </p>
-
-            {!hakbangDone ? (
-              <button
-                disabled={busy}
-              onClick={handleHakbangClaim}
-                className="mt-3 w-full rounded-xl bg-cocoa py-2.5 text-xs font-bold text-amber-100 hover:bg-cocoa/90 transition shadow-sm"
-              >
-                I will do this / Completed (+5 Gold Coins)
-              </button>
-            ) : (
-              <div className="mt-3 flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 py-2 rounded-xl">
-                <Check className="h-4 w-4" /> +5 Gold Coins credited to your collection!
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => navigate('/')}
-            className="btn-flame w-full py-3 text-sm mt-2"
-          >
-            Back to My Alkansya
-          </button>
-        </div>
-      </div>
-    );
+    setSelected(choice);
+    setResults(old => { const next = [...old]; next[cardIndex] = correct; return next; });
+    setFeedback(true);
+    if (correct) { playClink(progress.sound); setDropping(true); clearTimeout(coinTimer.current); coinTimer.current = setTimeout(() => setDropping(false), 900); }
+    else playSoft(progress.sound);
+    const entry: Submission = { index: cardIndex, id: question.id, choice, status: 'pending' };
+    submissions.current.push(entry);
+    void sync(entry);
   }
-
-  // --- QUESTION CARD VIEW ---
-  const isSort = question.kind === 'sort';
-  const sortItems = question.items || [];
-  const sortReady = isSort && sortItems.every((it) => sortMapping[it.key]);
-
-  return (
-    <div className="mx-auto max-w-md px-4 py-4 min-h-screen flex flex-col justify-between">
-      {/* Top Bar: Progress and Back */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => navigate('/')}
-            className="rounded-lg p-1.5 text-ink-muted hover:bg-black/5 transition"
-            title="Exit Session"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                ROLE_STYLE[currentScheduledCard.role]
-              }`}
-            >
-              {ROLE_LABEL[currentScheduledCard.role]}
-            </span>
-            <span className="text-xs font-extrabold text-cocoa">
-              {cardIndex + 1} of 3
-            </span>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden mb-3">
-          <div
-            className="h-full bg-flame transition-all duration-300"
-            style={{ width: `${((cardIndex + (showFeedback ? 1 : 0)) / 3) * 100}%` }}
-          />
-        </div>
-
-        {/* Question Header & Explicit Tier Label */}
-        <div className="text-center mb-3 flex flex-col items-center gap-1.5">
-          <div className="flex flex-wrap items-center justify-center gap-1.5">
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide border shadow-2xs ${tierStyle.pill}`}
-            >
-              Tier: {question.tier}
-            </span>
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-ink-muted">
-              FRP {question.course}
-            </span>
-          </div>
-          <h2 className="text-sm font-black text-ink uppercase tracking-wide">
-            {question.format}
-          </h2>
-        </div>
-
-        {/* Question Prompt Card */}
-        <div className="card p-5 mb-3 shadow-sm border border-amber-200/90 relative">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-bold text-ink leading-relaxed">
-              {question.promptFilipino || question.prompt}
-            </p>
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              className="shrink-0 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-amber-100/50 transition"
-              title="Toggle English context"
-            >
-              <Languages className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Filipino / Tagalog Translation of the Question */}
-          {showTranslation && question.promptFilipino && (
-            <div className="mt-3 pt-3 border-t border-amber-100 bg-amber-50/70 -mx-2 -mb-2 p-3 rounded-xl border border-amber-200/60">
-              <div className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
-                <span>English context:</span>
-              </div>
-              <p className="text-xs font-semibold text-cocoa leading-relaxed italic">
-                {question.prompt}
-              </p>
-            </div>
-          )}
-
-          {/* Mascot pose listening */}
-          <div className="absolute -bottom-3 right-3 opacity-20 pointer-events-none">
-            <HestiaMascot pose="thinking" height={42} />
-          </div>
-        </div>
-
-        {answerError && <p role="alert" className="text-sm text-red-800 mb-3">{answerError} Please retry your answer.</p>}{busy && <p role="status">Saving your answer…</p>}{/* Interactive Play Formats */}
-        {/* 1. SCAM O LEGIT? */}
-        {question.format === 'Scam o Legit?' && (
-          <div className="grid grid-cols-2 gap-3 my-3">
-            <button
-              onClick={() => handleSelectAnswer('SCAM')}
-              disabled={showFeedback || busy}
-              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
-                selectedAnswer === 'SCAM'
-                  ? 'border-scam bg-scam text-white'
-                  : 'border-scam/60 bg-red-50 text-scam hover:bg-red-100'
-              }`}
-            >
-              SCAM 🛑
-            </button>
-            <button
-              onClick={() => handleSelectAnswer('LEGIT')}
-              disabled={showFeedback || busy}
-              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
-                selectedAnswer === 'LEGIT'
-                  ? 'border-legit bg-legit text-white'
-                  : 'border-legit/60 bg-emerald-50 text-legit hover:bg-emerald-100'
-              }`}
-            >
-              LEGIT ✅
-            </button>
-          </div>
-        )}
-
-        {/* 2. TAMA O MALI? */}
-        {question.format === 'Tama o Mali?' && (
-          <div className="grid grid-cols-2 gap-3 my-3">
-            <button
-              onClick={() => handleSelectAnswer('TAMA')}
-              disabled={showFeedback}
-              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
-                selectedAnswer === 'TAMA'
-                  ? 'border-emerald-600 bg-emerald-600 text-white'
-                  : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-              }`}
-            >
-              TAMA (True)
-            </button>
-            <button
-              onClick={() => handleSelectAnswer('MALI')}
-              disabled={showFeedback}
-              className={`rounded-2xl border-2 py-3.5 text-center font-black text-sm shadow-btn transition active:translate-y-[2px] ${
-                selectedAnswer === 'MALI'
-                  ? 'border-rose-600 bg-rose-600 text-white'
-                  : 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
-              }`}
-            >
-              MALI (False)
-            </button>
-          </div>
-        )}
-
-        {/* 3. MULTIPLE CHOICE / LINGGO BOSS */}
-        {question.kind === 'choice' && question.options && (
-          <div className="space-y-2.5 my-3">
-            {question.options.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => handleSelectAnswer(opt.key)}
-                disabled={showFeedback}
-                className={`w-full text-left rounded-2xl border p-3.5 text-xs font-bold transition shadow-xs flex items-center justify-between ${
-                  selectedAnswer === opt.key
-                    ? 'border-flame bg-amber-100 text-cocoa'
-                    : 'border-hairline bg-white text-ink hover:bg-surface-sunk'
-                }`}
-              >
-                <div className="pr-2">
-                  <span>{opt.textFilipino || opt.text}</span>
-                  {opt.textFilipino && opt.textFilipino !== opt.text && (
-                    <span className="block text-[11px] font-normal text-ink-muted italic mt-0.5">
-                      {opt.text}
-                    </span>
-                  )}
-                </div>
-                <span className="h-5 w-5 shrink-0 rounded-full border border-stone-300 flex items-center justify-center text-[10px]">
-                  {opt.key}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* 4. SWELDO SORT */}
-        {isSort && (
-          <div className="space-y-3 my-2">
-            <div className="space-y-2">
-              {sortItems.map((item) => (
-                <div
-                  key={item.key}
-                  className="rounded-xl border border-hairline bg-white p-2.5 shadow-xs flex flex-col gap-1.5"
-                >
-                  <div>
-                    <span className="text-xs font-bold text-ink">{item.textFilipino || item.text}</span>
-                    {item.textFilipino && item.textFilipino !== item.text && (
-                      <span className="text-[11px] text-ink-muted italic block">
-                        {item.text}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {question.categories?.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => handleSortItem(item.key, cat)}
-                        disabled={showFeedback}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition border ${
-                          sortMapping[item.key] === cat
-                            ? 'bg-flame border-amber-500 text-cocoa'
-                            : 'bg-surface-sunk border-stone-200 text-ink-muted hover:bg-white'
-                        }`}
-                      >
-                        {SORT_LABELS[cat] || cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {!showFeedback && (
-              <button
-                onClick={handleSortSubmit}
-                disabled={busy || !sortReady}
-                className="btn-flame w-full py-3 text-xs mt-2 disabled:opacity-50"
-              >
-                Submit Category Sort
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* FEEDBACK BOTTOM DRAWER */}
-      {showFeedback && (
-        <div className="card p-4 border-2 border-amber-300 bg-white shadow-xl anim-up mt-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                results[results.length - 1] ? 'bg-emerald-600' : 'bg-rose-500'
-              }`}
-            >
-              {results[results.length - 1] ? '✓' : '✕'}
-            </div>
-            <h3 className="font-extrabold text-xs text-ink">
-              {results[results.length - 1] ? 'Correct! +1 coin' : 'Not quite — here is what to know'}
-            </h3>
-          </div>
-
-          <p className="text-xs font-bold text-cocoa mb-1">
-            Correct Answer: {question.answerLabel}
-          </p>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            {question.why}
-          </p>
-
-          {/* Tanong ng Bayan: Registered User Statistics */}
-          {(() => {
-            const questionLogs = getAllAnswerLogs().filter((l) => l.questionId === question.id);
-            const totalAttempts = questionLogs.length;
-            const correctAttempts = questionLogs.filter((l) => l.isCorrect).length;
-            const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
-            const wrongLog = questionLogs.find((l) => !l.isCorrect);
-            const trap = wrongLog ? `Common trap: Player chose "${wrongLog.userChoice}"` : question.communityStats?.topMisconception;
-
-            return (
-              <div className="my-2.5 rounded-xl border border-sky-200 bg-sky-50/70 p-2.5 text-left">
-                <div className="flex items-center justify-between text-[10px] font-extrabold text-sky-800 uppercase tracking-wider mb-1">
-                  <span className="flex items-center gap-1">
-                    <BarChart3 className="h-3.5 w-3.5 text-sky-600" /> Recorded accuracy
-                  </span>
-                  <span>
-                    {totalAttempts ? `${accuracy}% correct` : 'No recorded answers'} ({totalAttempts} {totalAttempts === 1 ? 'user log' : 'user logs'})
-                  </span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-sky-200 overflow-hidden mb-1">
-                  <div
-                    className="h-full bg-sky-600 transition-all duration-500 rounded-full"
-                    style={{ width: `${accuracy}%` }}
-                  />
-                </div>
-                {trap && (
-                  <p className="text-[11px] text-sky-900 font-medium leading-tight">
-                    💡 <strong>{trap}</strong>
-                  </p>
-                )}
-              </div>
-            );
-          })()}
-
-          <button
-            disabled={busy}
-            onClick={handleNextCard}
-            className="btn-flame w-full py-2.5 text-xs font-bold mt-2"
-          >
-            {cardIndex < 2 ? 'Next Card →' : 'View Session Results 🏆'}
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  async function next() {
+    if (!feedback || busy) return;
+    if (cardIndex < 2) { locked.current = false; setFeedback(false); setSelected(null); setMapping({}); setCardIndex(i => i + 1); return; }
+    setBusy(true); setError('');
+    try {
+      await Promise.all(submissions.current.map(s => s.status === 'error' ? sync(s) : s.promise));
+      if (submissions.current.some(s => s.status !== 'saved')) throw new Error('Your answers are still on this screen. Reconnect, then retry saving.');
+      // save_progress computes the final score from server answer rows.
+      await recordPlay(today, results.map(Boolean));
+      if (mounted.current) setComplete(true);
+    } catch (e) { if (mounted.current) setError((e as Error).message); }
+    finally { if (mounted.current) setBusy(false); }
+  }
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))) return;
+      if (feedback && ['Enter', ' '].includes(event.key) && !complete) { event.preventDefault(); void next(); return; }
+      if (feedback || complete || !question || question.kind === 'sort') return;
+      const index = ['1','2','3'].includes(event.key) ? Number(event.key) - 1 : ['a','b','c'].indexOf(event.key.toLowerCase());
+      const keys = question.format === 'Scam o Legit?' ? ['SCAM','LEGIT'] : question.kind === 'binary' ? ['TAMA','MALI'] : question.options?.map(o => o.key) || [];
+      if (index >= 0 && keys[index]) { event.preventDefault(); answer(keys[index]); }
+    };
+    window.addEventListener('keydown', keydown);
+    return () => window.removeEventListener('keydown', keydown);
+  });
+  const failed = submissions.current.some(s => s.status === 'error');
+  const pending = submissions.current.some(s => s.status === 'pending');
+  void syncVersion;
+  if (!schedule || !question) return <div className="p-8 text-center"><p>Today’s cards could not load. Please refresh to retry.</p><Link to="/" className="btn-ghost mt-4">Return home</Link></div>;
+  if (progress.plays[today] && !complete) return <div className="play-finished"><HestiaMascot pose="done" height={120}/><h1>Daily drop complete!</h1><Link to="/" className="btn-flame text-sm">Back to My Alkansya</Link></div>;
+  if (complete) return <div className="play-finished"><Alkansya fillPercentage={75}/><h1>Well done! +{results.filter(Boolean).length} coins</h1><p className="text-sm">Three small lessons. One stronger habit.</p><div className="hakbang"><h2 className="font-bold">Isang Hakbang · +5 gold</h2><p className="text-sm my-3">{schedule.cards[2].question.hakbang}</p><button disabled={busy || hakbang} className="btn-flame text-sm py-3 w-full" onClick={async () => { setBusy(true); setError(''); try { await completeHakbang(today); setHakbang(true); playClink(progress.sound); } catch(e) { setError((e as Error).message); } finally { setBusy(false); } }}>{hakbang ? <><Check size={16}/>5 gold saved</> : busy ? 'Saving…' : 'I completed this step · +5 gold'}</button></div>{error && <p role="alert">{error}</p>}<Link to="/" className="btn-ghost w-full">Back to My Alkansya</Link></div>;
+  const options = question.kind === 'binary' ? question.format === 'Scam o Legit?' ? [{key:'SCAM',text:'Scam'},{key:'LEGIT',text:'Legit'}] : [{key:'TAMA',text:'Tama · True'},{key:'MALI',text:'Mali · False'}] : question.options || [];
+  return <div className="play-viewport">
+    <header className="play-top"><Link to="/" aria-label="Exit daily drop"><ArrowLeft size={20}/></Link><span>{question.paydaySpecial ? 'Sweldo Hulog Special' : `FRP ${question.course} · ${question.tier}`}</span><b>{cardIndex + 1} / 3</b></header>
+    <div className="play-progress" aria-label={`Card ${cardIndex + 1} of 3`}><i style={{width:`${(cardIndex + (feedback ? 1 : 0)) / 3 * 100}%`}}/></div>
+    <div className="play-question"><p className="play-format">{question.format} · {['Warm-up','Core practice','Daily challenge'][cardIndex]}</p><h1 ref={prompt} tabIndex={-1}>{question.promptFilipino}</h1><p lang="en" className="english-context">{question.prompt}</p></div>
+    {!feedback && <div className="play-answers">
+      {question.kind !== 'sort' ? <div className={question.kind === 'binary' ? 'binary-answers' : 'choice-answers'}>{options.map((o, i) => <button key={o.key} aria-pressed={selected === o.key} onClick={() => answer(o.key)}><kbd>{i + 1}</kbd><span>{'textFilipino' in o ? o.textFilipino || o.text : o.text}</span></button>)}</div> : <><div className="sort-items">{question.items?.map(item => <fieldset key={item.key}><legend>{item.textFilipino || item.text}</legend><div>{question.categories?.map(cat => <button key={cat} aria-pressed={mapping[item.key] === cat} onClick={() => setMapping(m => ({...m,[item.key]:cat}))}>{SORT_LABELS[cat] || cat}</button>)}</div></fieldset>)}</div><button className="btn-flame text-sm py-3 w-full" disabled={!question.items?.every(i => mapping[i.key])} onClick={() => answer(JSON.stringify(mapping))}>Check my sort</button></>}
+    </div>}
+    {feedback && <section className="play-feedback" aria-label="Answer feedback"><div className="feedback-title"><strong role="status">{results[cardIndex] ? 'Correct! Coin on its way.' : 'A useful lesson for next time.'}</strong><div className="mini-bank"><Alkansya fillPercentage={50} animated={dropping}/></div></div><p className="text-xs font-bold text-cocoa">{question.answerLabel}</p><p className="feedback-why">{question.whyFilipino || question.why}</p><button ref={nextButton} disabled={busy} onClick={() => void next()} className="btn-flame w-full text-sm py-3">{busy ? 'Saving your drop…' : cardIndex < 2 ? 'Next Card →' : 'Save drop & view results →'}</button></section>}
+    <footer className="play-sync" aria-live="polite">{error ? <p role="alert">{error}</p> : failed ? <p>Answer save interrupted. <button onClick={() => { submissions.current.filter(s => s.status === 'error').forEach(s => void sync(s)); setSyncVersion(v => v + 1); }}>Retry saving</button></p> : pending ? 'Syncing answers… You can keep playing.' : feedback ? 'Answers saved.' : 'Keys 1 / 2 / 3 or A / B / C · Enter to continue'}</footer>
+  </div>;
 }

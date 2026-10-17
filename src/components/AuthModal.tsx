@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth, loginUser, registerUser, logoutUser } from '../lib/users';
-export function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function AuthModal({ isOpen, onClose, inline = false }: { isOpen: boolean; onClose: () => void; inline?: boolean }) {
   const { currentUser } = useAuth();
   const [register, setRegister] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => { if (isOpen) dialog.current?.showModal(); else dialog.current?.close(); }, [isOpen]);
-  return <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="auth-dialog" aria-labelledby="auth-title">
-    <button aria-label="Close account" className="float-right p-2" onClick={onClose}><X size={20}/></button>
-    <h2 id="auth-title" className="text-xl font-bold mb-2">{currentUser ? currentUser.username : register ? 'Start your Hulog habit' : 'Welcome back'}</h2>
+  useEffect(() => { if (!inline && isOpen) dialog.current?.showModal(); else dialog.current?.close(); }, [isOpen, inline]);
+  const content = <>
+    {!inline && <button aria-label="Close account" className="float-right p-2" onClick={onClose}><X size={20}/></button>}
+    <h2 id={inline ? 'landing-auth-title' : 'auth-title'} className="text-xl font-bold mb-2">{currentUser ? currentUser.username : register ? 'Start your Hulog habit' : 'Welcome back'}</h2>
     <p className="text-sm text-ink-muted mb-6">Your little daily steps, saved across devices.</p>
     {currentUser ? <div className="space-y-4">{currentUser.is_admin && <Link className="btn-ghost block" to="/admin" onClick={onClose}>Open Admin Panel</Link>}<button className="btn-flame w-full" onClick={() => { void logoutUser(); onClose(); }}>Log out</button></div> : <form className="space-y-4" onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError(''); const form = new FormData(e.currentTarget);
@@ -24,5 +24,6 @@ export function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       <button disabled={busy} className="btn-flame w-full">{busy ? 'Connecting…' : register ? 'Create account' : 'Log in'}</button>
       <button type="button" className="text-sm underline" onClick={() => { setRegister(!register); setError(''); }}>{register ? 'Already have an account? Log in' : 'New here? Create an account'}</button>
     </form>}
-  </dialog>;
+  </>;
+  return inline ? <section className="auth-inline" aria-labelledby="landing-auth-title">{content}</section> : <dialog ref={dialog} onCancel={onClose} onClose={onClose} className="auth-dialog" aria-labelledby="auth-title">{content}</dialog>;
 }

@@ -1,14 +1,29 @@
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb,raw_app_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;grant execute on function auth.uid() to anon,authenticated,service_role;`);
-await db.exec(readFileSync(new URL('../supabase/migrations/202610160001_hulog.sql',import.meta.url),'utf8'));
+for(const file of readdirSync(new URL('../supabase/migrations/',import.meta.url)).filter(f=>f.endsWith('.sql')).sort()) await db.exec(readFileSync(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
 const seed=JSON.parse(readFileSync(new URL('../supabase/seed-data.json',import.meta.url),'utf8'));
 const compiled = await build({entryPoints:['src/lib/dailyQuestions.ts'],bundle:true,write:false,format:'esm',platform:'node'});
 const {selectDailyQuestions} = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-for(const q of seed.questions) await db.query('insert into questions values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[q.id,q.text,q.choices,q.correct_answer,q.explanation,q.category,null,null,q.slot,q.payload]);
+assert.equal(seed.questions.length,1095);
+assert.equal(seed.collection_items.length,48);
+for(const field of ['prompt','promptFilipino','why','hakbang']) assert.equal(new Set(seed.questions.map(q=>q.payload[field].toLowerCase().replace(/[\d,.₱]+/g,'#'))).size,1095,field+' distinct beyond number changes');
+for(const q of seed.questions) await db.query('insert into questions values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[q.id,q.text,q.choices,q.correct_answer,q.explanation,q.category,q.scheduled_date,q.recurring_day,q.slot,q.payload]);
+const calendar=(await db.query("select d::date::text as play_day,x.id,x.slot from generate_series('2026-01-01'::date,'2026-12-31'::date,'1 day') d cross join lateral daily_question_ids(d::date) x order by d,x.slot")).rows;
+assert.equal(calendar.length,1095);
+assert.equal(new Set(calendar.map(c=>c.id)).size,1095,'no repeats in 2026');
+for(let i=0;i<365;i++) {
+ const date=new Date(Date.UTC(2026,0,i+1)).toISOString().slice(0,10);
+ const selected=selectDailyQuestions(seed.questions.map(q=>q.payload),date);
+ assert.deepEqual(selected.map(q=>q.id),calendar.filter(c=>c.play_day===date).map(c=>c.id),'2026 client/server agreement '+date);
+ assert.deepEqual(selected.map(q=>q.difficulty),['easy','medium','challenge']);
+ assert.equal(selected[0].kind,'binary');
+ const dom=Number(date.slice(8));
+ if(dom===15||dom===30) assert.ok(selected.every(q=>q.paydaySpecial),'all payday slots use allocation');
+}
 for(const i of seed.collection_items)await db.query('insert into collection_items values($1,$2,$3,$4)',[i.id,i.category,i.wearable,i.reward_order]);
 const player='11111111-1111-4111-8111-111111111111',admin='22222222-2222-4222-8222-222222222222',other='33333333-3333-4333-8333-333333333333';
 for(const [id,username] of [[player,'player_one'],[admin,'admin_one'],[other,'player_two']]) await db.query('insert into auth.users values($1,$2)',[id,{username}]);
@@ -20,6 +35,7 @@ await db.query("update auth.users set raw_app_meta_data='{}' where id=$1",['5555
 // Remove only this in-memory fixture so existing row-count assertions stay precise.
 await db.query('delete from auth.users where id=$1',['55555555-5555-4555-8555-555555555555']);
 await db.query('update profiles set is_admin=true where id=$1',[admin]);
+assert.equal((await db.query('select * from user_collections where user_id=$1',[admin])).rows.length,48,'trusted admin promotion unlocks entire catalog');
 async function asUser(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
 async function rejected(fn,pattern){await assert.rejects(fn,pattern);}
 await asUser(player);
@@ -47,16 +63,27 @@ assert.equal(progress.plays[date].barya,3,'server computes results');assert.equa
 await db.query('select save_progress($1)',[{plays:{[date]:{hakbang:true}}}]);await db.query('select save_progress($1)',[{plays:{[date]:{hakbang:true}}}]);
 assert.equal((await db.query('select progress from profiles')).rows[0].progress.ginto,5,'micro-action reward is idempotent');
 await asUser(admin);assert.equal((await db.query('select * from profiles')).rows.length,3);
-await db.query('select set_admin($1,true)',[other]);await db.query('select set_admin($1,false)',[other]);await rejected(()=>db.query('select set_admin($1,false)',[admin]),/another administrator/);
+await db.query('select set_admin($1,true)',[other]);
+await db.query('select set_admin($1,true)',[other]);
+assert.equal((await db.query('select * from user_collections where user_id=$1',[other])).rows.length,48,'RPC promotion unlocks all items idempotently');
+await db.query('select equip_item($1)',[seed.collection_items.find(i=>i.wearable).id]);
+await rejected(()=>db.query('select equip_item($1)',[seed.collection_items.find(i=>!i.wearable).id]),/Unlock this wearable/);
+await db.query('select set_admin($1,false)',[other]);await rejected(()=>db.query('select set_admin($1,false)',[admin]),/another administrator/);
+// Admin entitlement still permits equip when a legacy ownership row is missing.
+await db.exec('reset role');
+const adminWearable=seed.collection_items.find(i=>i.wearable);
+await db.query('delete from user_collections where user_id=$1 and item_id=$2',[admin,adminWearable.id]);
+await asUser(admin);await db.query('select equip_item($1)',[adminWearable.id]);
 const override={...seed.questions[0],id:'override',scheduled_date:date,slot:1};
+await db.query('update questions set scheduled_date=null where scheduled_date=$1 and slot=1',[date]);
 await db.query('insert into questions values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[override.id,override.text,override.choices,override.correct_answer,override.explanation,override.category,date,null,1,override.payload]);
 assert.equal((await db.query('select id from daily_question_ids($1) where slot=1',[date])).rows[0].id,'override','date override takes priority');
 // Verify the time-dependent Sunday branch with an injected clock in this test database only.
 await db.exec('reset role');
 const originalSave=(await db.query("select pg_get_functiondef('public.save_progress(jsonb)'::regprocedure) definition")).rows[0].definition;
 await db.exec(originalSave.replaceAll('now()', "'2026-10-18T04:00:00Z'::timestamptz"));
-await db.query('update profiles set progress=$1 where id=$2',[{plays:{'2026-10-18':{results:[true,true,true],barya:3,hakbang:false}},basag:{},ginto:0},other]);
-await asUser(other);
+await db.query('update profiles set progress=$1 where id=$2',[{plays:{'2026-10-18':{results:[true,true,true],barya:3,hakbang:false}},basag:{},ginto:0},player]);
+await asUser(player);
 await db.query('select save_progress($1)',[{basag:{'2026-10-12':'forged-item'}}]);
 await db.query('select save_progress($1)',[{basag:{'2026-10-12':'forged-item'}}]);
 const unlocked=(await db.query('select * from user_collections')).rows;
@@ -64,8 +91,8 @@ assert.equal(unlocked.length,1,'Sunday replay grants one reward only');
 assert.equal(unlocked[0].item_id,seed.collection_items[0].id,'reward comes from server catalog, not client request');
 await db.exec('reset role');
 const wearable=seed.collection_items.find(i=>i.wearable);
-await db.query('insert into user_collections(user_id,item_id,category) values($1,$2,$3)',[other,wearable.id,wearable.category]);
-await asUser(other);await db.query('select equip_item($1)',[wearable.id]);
+await db.query('insert into user_collections(user_id,item_id,category) values($1,$2,$3)',[player,wearable.id,wearable.category]);
+await asUser(player);await db.query('select equip_item($1)',[wearable.id]);
 assert.equal((await db.query('select equipped_outfit from profiles')).rows[0].equipped_outfit,wearable.id);
 await db.query('select equip_item(null)');assert.equal((await db.query('select equipped_outfit from profiles')).rows[0].equipped_outfit,null);
 await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub','',false)");await db.exec('set role anon');

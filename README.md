@@ -14,10 +14,10 @@ Never put GitHub tokens, service-role keys, or passwords in a `VITE_` variable. 
 
 The connected account must have access to the target project. The public key cannot initialize the database.
 
-1. Inspect the existing schema first. Apply `supabase/migrations/202610160001_hulog.sql` to a fresh project, or reconcile it with an existing schema before applying it. The migration is intentionally not a destructive reset.
+1. Inspect the existing schema first. Apply `supabase/migrations/202610160001_hulog.sql` and `supabase/migrations/20261017174213_admin_collection_unlocks.sql` to a fresh project, or reconcile them with an existing schema before applying. The migrations are intentionally not a destructive reset.
 2. In Supabase Auth settings, enable email/password signup and disable **Confirm email**. Players only enter a username/password; the app maps usernames to internal identifiers such as `name@players.hulog.internal`. There is no email recovery flow for these identifiers. Set appropriate Auth rate limits for public signup.
 3. Set server environment variables `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `HULOG_ADMIN_PASSWORD` in a secure terminal. Use the requested initial administrator password for the last variable. Do not store it in source control.
-4. Run `npm run seed`. It imports 112 curriculum cards and 48 collectibles, then creates or verifies the reserved `hermeshulog` account with an administrator role. Existing seeded accounts are verified without resetting their passwords. The script refuses to promote an unmarked pre-existing identity.
+4. Run `npm run seed`. It imports 1,095 scheduled 2026 curriculum cards (365 days × 3 slots across FRP 101–108) and 48 collectibles, creates or verifies the reserved `hermeshulog` account with an administrator role, and unlocks all 48 collectibles for administrator accounts. Existing seeded accounts are verified without resetting their passwords. The script refuses to promote an unmarked pre-existing identity.
 5. Verify login, registration, refresh persistence, player isolation, and administrator access against the live project.
 
 The seed is idempotent and preserves edits to existing questions. Run `node scripts/build-seed.mjs` to regenerate its input after changing the source curriculum or collection catalog. Collection rewards rotate across shelves, including wearables, instead of exhausting one shelf first.
@@ -28,7 +28,7 @@ For an interactive local administrator setup, run `npm run setup:admin`. It prom
 
 Supabase Auth owns password hashes in `auth.users`; there is deliberately no public `profiles.password_hash` column. Profiles contain account identity, role, coin/streak summaries, equipped outfit, and validated progress JSON.
 
-All exposed tables have RLS. Players can read their own profile, answers, and unlocks. Administrators can read player metrics and edit questions. Client code cannot directly update profiles, roles, coins, answer history, or unlocks. Validated SQL functions score today's scheduled questions, prevent duplicate rewards, save daily completion, award Sunday collectibles, verify wearable ownership, and change roles. Self-demotion is blocked.
+All exposed tables have RLS. Players can read their own profile, answers, and unlocks. Administrators can read player metrics, edit questions, and automatically have all 48 collectibles unlocked and equippable. Client code cannot directly update profiles, roles, coins, answer history, or unlocks. Validated SQL functions score today's scheduled questions, prevent duplicate rewards, save daily completion, award Sunday collectibles, verify wearable ownership, and change roles. Self-demotion is blocked.
 
 Saving waits for the server before confirming completion. Guest play is gated by login. Credentials and demo users from the former browser-only prototype are not imported or reused. Sessions persist through the Supabase client, and account switching reloads account-specific progress.
 
