@@ -1,37 +1,464 @@
-import { useState } from 'react';
-import type { Question } from '../../data/types';
-import { useAllQuestions, addCustomQuestion, deleteCustomQuestion } from '../../lib/customQuestions';
-import { COURSES } from '../../data/courses';
-import AdminCalendar from './AdminCalendar';
+import { useState } from "react";
+import type { Question } from "../../data/types";
+import {
+  useAllQuestions,
+  addCustomQuestion,
+  deleteCustomQuestion,
+} from "../../lib/customQuestions";
+import { COURSES } from "../../data/courses";
+import AdminCalendar from "./AdminCalendar";
 export default function QuestionEditor() {
   const questions = useAllQuestions();
-  const [editing, setEditing] = useState<Question | null>(null); const [open, setOpen] = useState(false);
-  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [search, setSearch] = useState('');
-  return <section><h1 className="text-2xl font-bold mb-2">Question Bank & Calendar</h1><p className="text-sm mb-5">Assign one card per slot to a date or recurring weekday. Exact dates take priority over recurring cards, then the curriculum rotation.</p><button className="btn-flame text-sm py-2" onClick={() => {setEditing(null);setOpen(true);setError('');}}>Create question</button>{error && <p role="alert" className="my-3 text-red-800">{error}</p>}
-  {open && <form key={editing?.id || 'new'} className="editor-form my-6" onSubmit={async e => {
-    e.preventDefault(); setBusy(true);setError(''); const f=new FormData(e.currentTarget);
-    try {
-      if(f.get('date') && f.get('day')!=='') throw new Error('Choose either a specific date or a recurring weekday.');
-      const kind=String(f.get('kind')) as Question['kind'];
-      const format=String(f.get('format'));
-      if ((format==='Sweldo Sort' && kind!=='sort') || (['Scam o Legit?','Tama o Mali?'].includes(format) && kind!=='binary') || (format==='Money Choices' && kind!=='choice')) throw new Error('Match the interaction to the game format: two choices, sort items, or multiple choice.');
-      const options=kind==='sort' ? undefined : String(f.get('choices')).split('\n').filter(Boolean).map(line => { const [key,...text]=line.split('|'); if(!key.trim() || !text.join('|').trim()) throw new Error('Use KEY|Filipino text for each choice.'); return {key:key.trim(),text:text.join('|').trim(),textFilipino:text.join('|').trim()}; });
-      const items=kind==='sort' ? String(f.get('choices')).split('\n').filter(Boolean).map(line=>{ const [key,text,answer]=line.split('|'); if(!key||!text||!answer) throw new Error('Sort rows need KEY|Filipino text|category.'); return { key:key.trim(),text:text.trim(),textFilipino:text.trim(),answer:answer.trim()}; }) : undefined;
-      const answer=String(f.get('answer'));
-      const expected=format==='Scam o Legit?' ? ['SCAM','LEGIT'] : format==='Tama o Mali?' ? ['TAMA','MALI'] : null;
-      if(expected && (!options || options.length!==2 || expected.some(key=>!options.some(o=>o.key===key)))) throw new Error('This format needs exactly these choice keys: '+expected.join(', ')); if(options && (!options.some(o=>o.key===answer)||options.length<2)) throw new Error('Provide at least two choices and a matching correct answer key.');
-      const course=Number(f.get('course')) as Question['course']; const tier=COURSES.find(c=>c.code===course)!.tier;
-      await addCustomQuestion({ id:editing?.id, kind, course, tier, format:String(f.get('format')), prompt:String(f.get('english')), promptFilipino:String(f.get('text')), why:String(f.get('explanation')), whyFilipino:String(f.get('explanation')), answer, answerLabel:answer, options, items, categories:items ? [...new Set(items.map(i=>i.answer))] : undefined, hakbang:String(f.get('action')), scheduledDate:String(f.get('date')) || null, recurringDay:f.get('day')==='' ? null : Number(f.get('day')), slot:Number(f.get('slot')) }); setOpen(false);
-    } catch(e) {setError((e as Error).message);} finally {setBusy(false);}
-  }}>
-    <h2 className="text-lg font-bold">{editing ? 'Edit question' : 'New question'}</h2>
-    <label>Filipino question<textarea className="field" name="text" required defaultValue={editing?.promptFilipino}/></label>
-    <label>English context<textarea className="field" name="english" required defaultValue={editing?.prompt}/></label>
-    <div className="grid sm:grid-cols-3 gap-4"><label>Game format<select className="field" name="format" defaultValue={editing?.format || 'Scam o Legit?'}>{['Scam o Legit?', 'Tama o Mali?', 'Sweldo Sort', 'Money Choices'].map(v=><option key={v}>{v}</option>)}</select></label><label>Interaction<select className="field" name="kind" defaultValue={editing?.kind || 'binary'}><option value="binary">Two choices</option><option value="choice">Multiple choice</option><option value="sort">Sort items</option></select></label><label>Course<select name="course" className="field" defaultValue={editing?.course || 101}>{COURSES.map(c=><option key={c.code} value={c.code}>FRP {c.code} · {c.title}</option>)}</select></label></div>
-    <label>Choices: one KEY|Filipino text per line; sorting uses KEY|text|category<textarea className="field" required name="choices" rows={5} defaultValue={editing?.kind === 'sort' ? editing.items?.map(i=>`${i.key}|${i.textFilipino || i.text}|${i.answer}`).join('\n') : editing?.options?.map(o=>`${o.key}|${o.textFilipino || o.text}`).join('\n') || (editing?.format === 'Tama o Mali?' ? 'TAMA|Tama\nMALI|Mali' : 'SCAM|Scam\nLEGIT|Legit')}/></label>
-    <label>Correct answer key (sorting is graded by each category)<input className="field" name="answer" defaultValue={editing?.answer || 'SCAM'}/></label>
-    <label>Explanation<textarea className="field" name="explanation" required defaultValue={editing?.whyFilipino || editing?.why}/></label><label>Optional real-world action<input className="field" name="action" defaultValue={editing?.hakbang}/></label>
-    <div className="grid sm:grid-cols-3 gap-4"><label>Scheduled date<input className="field" name="date" type="date" defaultValue={editing?.scheduledDate || ''}/></label><label>Recurring weekday<select className="field" name="day" defaultValue={editing?.recurringDay ?? ''}><option value="">No recurrence</option>{['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i)=><option key={d} value={i}>{d}</option>)}</select></label><label>Daily slot<select className="field" name="slot" defaultValue={editing?.slot || 1}>{[1,2,3].map(n=><option key={n} value={n}>Card {n}</option>)}</select></label></div><div className="flex gap-3"><button disabled={busy} className="btn-flame text-sm py-2">{busy?'Saving…':'Save question'}</button><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button></div>
-  </form>}
-  <label className="block my-5">Search questions<input className="field" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="max-h-[34rem] overflow-auto"><table className="data-table"><thead><tr><th>Question</th><th>Schedule</th><th>Actions</th></tr></thead><tbody>{questions.filter(q=>`${q.promptFilipino} ${q.prompt} ${q.course}`.toLowerCase().includes(search.toLowerCase())).map(q=><tr key={q.id}><td><strong>{q.promptFilipino}</strong><p className="text-xs">FRP {q.course} · {q.format}</p></td><td>{q.scheduledDate || (q.recurringDay!=null ? ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][q.recurringDay] : 'Rotation')} · Card {q.slot}</td><td><div className="flex gap-2"><button className="btn-ghost" onClick={()=>{setEditing(q);setOpen(true);window.scrollTo({top:0,behavior:'smooth'});}}>Edit</button><button disabled={busy} className="btn-ghost text-red-800" onClick={async()=>{if(!confirm('Delete this question? Existing answer history will be retained.'))return;setBusy(true);try{await deleteCustomQuestion(q.id);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Delete</button></div></td></tr>)}</tbody></table></div>{!questions.length && <p className="py-6">No questions loaded. Import the curriculum seed to start.</p>}<div className="mt-10"><AdminCalendar/></div></section>;
+  const [editing, setEditing] = useState<Question | null>(null);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  return (
+    <section>
+      <h1 className="text-2xl font-bold mb-2">Question Bank & Calendar</h1>
+      <p className="text-sm mb-5">
+        Assign one card per slot to a date or recurring weekday. Exact dates
+        take priority over recurring cards, then the curriculum rotation.
+      </p>
+      <button
+        className="btn-flame text-sm py-2"
+        onClick={() => {
+          setEditing(null);
+          setOpen(true);
+          setError("");
+        }}
+      >
+        Create question
+      </button>
+      {error && (
+        <p role="alert" className="my-3 text-red-800">
+          {error}
+        </p>
+      )}
+      {open && (
+        <form
+          key={editing?.id || "new"}
+          className="editor-form my-6"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError("");
+            const f = new FormData(e.currentTarget);
+            try {
+              if (f.get("date") && f.get("day") !== "")
+                throw new Error(
+                  "Choose either a specific date or a recurring weekday.",
+                );
+              const kind = String(f.get("kind")) as Question["kind"];
+              const format = String(f.get("format"));
+              if (
+                (format === "Sweldo Sort" && kind !== "sort") ||
+                (["Scam o Legit?", "Tama o Mali?"].includes(format) &&
+                  kind !== "binary") ||
+                (format === "Money Choices" && kind !== "choice")
+              )
+                throw new Error(
+                  "Match the interaction to the game format: two choices, sort items, or multiple choice.",
+                );
+              const options =
+                kind === "sort"
+                  ? undefined
+                  : String(f.get("choices"))
+                      .split("\n")
+                      .filter(Boolean)
+                      .map((line) => {
+                        const [key, en, fil] = line.split("|");
+                        if (!key?.trim() || !en?.trim() || !fil?.trim())
+                          throw new Error(
+                            "Use KEY|English|Filipino for each choice.",
+                          );
+                        if (
+                          en.trim().split(/\s+/).length > 8 ||
+                          fil.trim().split(/\s+/).length > 8
+                        )
+                          throw new Error(
+                            "Keep choices to eight words or fewer in each language.",
+                          );
+                        return {
+                          key: key.trim(),
+                          text: en.trim(),
+                          textFilipino: fil.trim(),
+                        };
+                      });
+              const items =
+                kind === "sort"
+                  ? String(f.get("choices"))
+                      .split("\n")
+                      .filter(Boolean)
+                      .map((line) => {
+                        const [key, text, answer] = line.split("|");
+                        if (!key || !text || !answer)
+                          throw new Error(
+                            "Sort rows need KEY|Filipino text|category.",
+                          );
+                        return {
+                          key: key.trim(),
+                          text: text.trim(),
+                          textFilipino: text.trim(),
+                          answer: answer.trim(),
+                        };
+                      })
+                  : undefined;
+              const answer = String(f.get("answer"));
+              const expected =
+                format === "Scam o Legit?"
+                  ? ["SCAM", "LEGIT"]
+                  : format === "Tama o Mali?"
+                    ? ["TAMA", "MALI"]
+                    : null;
+              if (
+                expected &&
+                (!options ||
+                  options.length !== 2 ||
+                  expected.some((key) => !options.some((o) => o.key === key)))
+              )
+                throw new Error(
+                  "This format needs exactly these choice keys: " +
+                    expected.join(", "),
+                );
+              if (
+                options &&
+                (!options.some((o) => o.key === answer) || options.length < 2)
+              )
+                throw new Error(
+                  "Provide at least two choices and a matching correct answer key.",
+                );
+              const course = Number(f.get("course")) as Question["course"];
+              const tier = COURSES.find((c) => c.code === course)!.tier;
+              await addCustomQuestion({
+                id: editing?.id,
+                kind,
+                course,
+                tier,
+                format: String(f.get("format")),
+                prompt: String(f.get("english")),
+                promptFilipino: String(f.get("text")),
+                why: String(f.get("explanation")),
+                whyFilipino: String(f.get("explanationFilipino")),
+                answer,
+                answerLabel: answer,
+                options,
+                items,
+                categories: items
+                  ? [...new Set(items.map((i) => i.answer))]
+                  : undefined,
+                hakbang: String(f.get("action")),
+                hakbangEnglish: String(f.get("actionEnglish")),
+                scheduledDate: String(f.get("date")) || null,
+                recurringDay: f.get("day") === "" ? null : Number(f.get("day")),
+                slot: Number(f.get("slot")),
+              });
+              setOpen(false);
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <h2 className="text-lg font-bold">
+            {editing ? "Edit question" : "New question"}
+          </h2>
+          <label>
+            Filipino question
+            <textarea
+              className="field"
+              name="text"
+              required
+              defaultValue={editing?.promptFilipino}
+            />
+          </label>
+          <label>
+            English question (primary)
+            <textarea
+              className="field"
+              name="english"
+              required
+              defaultValue={editing?.prompt}
+            />
+          </label>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <label>
+              Game format
+              <select
+                className="field"
+                name="format"
+                defaultValue={editing?.format || "Scam o Legit?"}
+              >
+                {[
+                  ...new Set([
+                    "Scam o Legit?",
+                    "Tama o Mali?",
+                    "Ano'ng Gagawin Mo?",
+                    "Sweldo Sort",
+                    "Money Choices",
+                    ...(editing ? [editing.format] : []),
+                  ]),
+                ].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Interaction
+              <select
+                className="field"
+                name="kind"
+                defaultValue={editing?.kind || "binary"}
+              >
+                <option value="binary">Two choices</option>
+                <option value="choice">Multiple choice</option>
+                <option value="sort">Sort items</option>
+              </select>
+            </label>
+            <label>
+              Course
+              <select
+                name="course"
+                className="field"
+                defaultValue={editing?.course || 101}
+              >
+                {COURSES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    FRP {c.code} · {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Choices: KEY|English|Filipino per line; sorting uses
+            KEY|text|category
+            <textarea
+              className="field"
+              required
+              name="choices"
+              rows={5}
+              defaultValue={
+                editing?.kind === "sort"
+                  ? editing.items
+                      ?.map(
+                        (i) =>
+                          `${i.key}|${i.textFilipino || i.text}|${i.answer}`,
+                      )
+                      .join("\n")
+                  : editing?.options
+                      ?.map(
+                        (o) => `${o.key}|${o.text}|${o.textFilipino || o.text}`,
+                      )
+                      .join("\n") ||
+                    (editing?.format === "Tama o Mali?"
+                      ? "TAMA|True|Tama\nMALI|False|Mali"
+                      : "SCAM|Scam|Panlilinlang\nLEGIT|Legit|Ligtas na hakbang")
+              }
+            />
+          </label>
+          <label>
+            Correct answer key (sorting is graded by each category)
+            <input
+              className="field"
+              name="answer"
+              defaultValue={editing?.answer || "SCAM"}
+            />
+          </label>
+          <label>
+            English explanation + Rule of thumb
+            <textarea
+              className="field"
+              name="explanation"
+              required
+              defaultValue={editing?.why}
+            />
+          </label>
+          <label>
+            Filipino explanation + Tip ng Araw
+            <textarea
+              className="field"
+              name="explanationFilipino"
+              required
+              defaultValue={editing?.whyFilipino}
+            />
+          </label>
+          <label>
+            English action step
+            <input
+              className="field"
+              name="actionEnglish"
+              defaultValue={editing?.hakbangEnglish}
+            />
+          </label>
+          <label>
+            Filipino action step
+            <input
+              className="field"
+              name="action"
+              defaultValue={editing?.hakbang}
+            />
+          </label>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <label>
+              Scheduled date
+              <input
+                className="field"
+                name="date"
+                type="date"
+                defaultValue={editing?.scheduledDate || ""}
+              />
+            </label>
+            <label>
+              Recurring weekday
+              <select
+                className="field"
+                name="day"
+                defaultValue={editing?.recurringDay ?? ""}
+              >
+                <option value="">No recurrence</option>
+                {[
+                  "Sunday",
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                ].map((d, i) => (
+                  <option key={d} value={i}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Daily slot
+              <select
+                className="field"
+                name="slot"
+                defaultValue={editing?.slot || 1}
+              >
+                {[1, 2, 3].map((n) => (
+                  <option key={n} value={n}>
+                    Card {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex gap-3">
+            <button disabled={busy} className="btn-flame text-sm py-2">
+              {busy ? "Saving…" : "Save question"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      <label className="block my-5">
+        Search questions
+        <input
+          className="field"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </label>
+      <div className="max-h-[34rem] overflow-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Schedule</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {questions
+              .filter((q) =>
+                `${q.promptFilipino} ${q.prompt} ${q.course}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
+              )
+              .map((q) => (
+                <tr key={q.id}>
+                  <td>
+                    <strong>{q.promptFilipino}</strong>
+                    <p className="text-xs">
+                      FRP {q.course} · {q.format}
+                    </p>
+                  </td>
+                  <td>
+                    {q.scheduledDate ||
+                      (q.recurringDay != null
+                        ? [
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                          ][q.recurringDay]
+                        : "Rotation")}{" "}
+                    · Card {q.slot}
+                  </td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button
+                        className="btn-ghost"
+                        onClick={() => {
+                          setEditing(q);
+                          setOpen(true);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        disabled={busy}
+                        className="btn-ghost text-red-800"
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              "Delete this question? Existing answer history will be retained.",
+                            )
+                          )
+                            return;
+                          setBusy(true);
+                          try {
+                            await deleteCustomQuestion(q.id);
+                          } catch (e) {
+                            setError((e as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      {!questions.length && (
+        <p className="py-6">
+          No questions loaded. Import the curriculum seed to start.
+        </p>
+      )}
+      <div className="mt-10">
+        <AdminCalendar />
+      </div>
+    </section>
+  );
 }

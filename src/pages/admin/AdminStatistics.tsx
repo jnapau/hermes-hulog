@@ -1,3 +1,4 @@
+import { LearningCharts } from '../../components/LearningCharts';
 import { useState, useMemo } from 'react';
 import { getAnswerStatistics, UserSummaryRow } from '../../lib/statistics';
 import { ALL_TIERS } from '../../data/questions';
@@ -56,7 +57,7 @@ export default function AdminStatistics() {
             <Users className="h-3.5 w-3.5 text-brand" /> Registered Users
           </span>
           <p className="text-2xl font-black text-brand mt-1">{stats.totalRegisteredUsers}</p>
-          <span className="text-[11px] text-ink-muted font-medium">Sample player accounts</span>
+          <span className="text-[11px] text-ink-muted font-medium">Registered player accounts</span>
         </div>
 
         <div className="card p-4">
@@ -84,6 +85,7 @@ export default function AdminStatistics() {
         </div>
       </div>
 
+      <LearningCharts/>
       {/* 1. REGISTERED USERS ACTIVITY TABLE */}
       <div className="card p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
@@ -92,7 +94,7 @@ export default function AdminStatistics() {
               <Users className="h-4 w-4 text-brand" /> Registered Users Summary
             </h3>
             <p className="text-[11px] text-ink-muted">
-              Users registered on this sample app (Username & Password) and their question performance.
+              Players registered in this app and their question performance.
             </p>
           </div>
           <span className="rounded-full bg-brand/10 text-brand px-2 py-0.5 text-xs font-black">
