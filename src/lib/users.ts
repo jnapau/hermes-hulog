@@ -34,7 +34,8 @@ export async function refreshAccount() {
     const [users, logs, owned] = await Promise.all([readRows('profiles'), readRows('user_answers'), readRows('user_collections')]);
     if (run !== generation) return;
     state.users = users.map(u => userFrom(u as Parameters<typeof userFrom>[0], u.is_admin ? COLLECTIBLES.length : owned.filter(c => c.user_id === u.id).length));
-    state.logs = logs.map(a => ({ id: a.id, username: state.users.find(u => u.id === a.user_id)?.username || 'Deleted user', questionId: a.question_id, userChoice: a.user_choice, isCorrect: a.is_correct, date: a.play_date, timestamp: a.answered_at }));
+    const adminIds = new Set(state.users.filter(u => u.is_admin).map(u => u.id));
+    state.logs = logs.filter(a => !adminIds.has(a.user_id)).map(a => ({ id: a.id, username: state.users.find(u => u.id === a.user_id)?.username || 'Deleted user', questionId: a.question_id, userChoice: a.user_choice, isCorrect: a.is_correct, date: a.play_date, timestamp: a.answered_at }));
   } else {
     const { data, error } = await supabase.from('user_answers').select('*').eq('user_id',session.user.id).eq('play_date',todayPH());
     if (run !== generation) return;

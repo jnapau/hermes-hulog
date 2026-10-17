@@ -99,17 +99,17 @@ for (const q of seed.questions)
 console.log("Checking complete calendar…");
 const calendar = (
   await db.query(
-    "select d::date::text as play_day,x.id,x.slot from generate_series('2026-01-01'::date,'2026-12-31'::date,'1 day') d cross join lateral daily_question_ids(d::date) x order by d,x.slot",
+    "select d::date::text as play_day,x.id,x.slot from generate_series('2026-10-16'::date,'2027-10-15'::date,'1 day') d cross join lateral daily_question_ids(d::date) x order by d,x.slot",
   )
 ).rows;
 assert.equal(calendar.length, 1095);
 assert.equal(
   new Set(calendar.map((c) => c.id)).size,
   1095,
-  "no repeats in 2026",
+  "no repeats in 2026-10-16..2027-10-15",
 );
 for (let i = 0; i < 365; i++) {
-  const date = new Date(Date.UTC(2026, 0, i + 1)).toISOString().slice(0, 10);
+  const date = new Date(Date.UTC(2026, 9, 16 + i)).toISOString().slice(0, 10);
   const selected = selectDailyQuestions(
     seed.questions.map((q) => q.payload),
     date,
@@ -117,7 +117,7 @@ for (let i = 0; i < 365; i++) {
   assert.deepEqual(
     selected.map((q) => q.id),
     calendar.filter((c) => c.play_day === date).map((c) => c.id),
-    "2026 client/server agreement " + date,
+    "2026–2027 client/server agreement " + date,
   );
   assert.deepEqual(
     selected.map((q) => q.difficulty),
@@ -327,6 +327,31 @@ assert.equal(
 );
 await asUser(admin);
 assert.equal((await db.query("select * from profiles")).rows.length, 3);
+for (let round = 0; round < 3; round++) {
+  for (const q of cards) {
+    const res = await db.query("select submit_answer($1,$2) correct", [
+      q.id,
+      q.correct_answer,
+    ]);
+    assert.equal(res.rows[0].correct, true, "admin answer evaluates correctly");
+  }
+}
+assert.equal(
+  (await db.query("select * from user_answers where user_id=$1", [admin])).rows
+    .length,
+  0,
+  "admin answers are never recorded in user_answers",
+);
+const adminSaved = (
+  await db.query("select save_progress($1) p", [
+    { plays: { [date]: { results: [true, true, true], hakbang: true } } },
+  ])
+).rows[0].p;
+assert.equal(
+  adminSaved.plays[date],
+  undefined,
+  "admin daily play is never locked out",
+);
 await db.query("select set_admin($1,true)", [other]);
 await db.query("select set_admin($1,true)", [other]);
 assert.equal(

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, RotateCcw } from "lucide-react";
 import { todayPH } from "../lib/date";
 import { getDaySchedule } from "../lib/schedule";
 import { recordPlay, completeHakbang, useProgress } from "../lib/progress";
@@ -10,6 +10,7 @@ import {
   recordUserAnswer,
   getAllAnswerLogs,
   getCurrentUsername,
+  useAuth,
 } from "../lib/users";
 import { checkAnswer } from "../lib/checkAnswer";
 
@@ -31,17 +32,20 @@ export default function Play() {
   const today = todayPH();
   const schedule = getDaySchedule(today);
   const progress = useProgress();
-  const saved =
-    schedule?.cards.map((c) =>
-      getAllAnswerLogs().find(
-        (a) =>
-          a.username === getCurrentUsername() &&
-          a.date === today &&
-          a.questionId === c.question.id,
-      ),
-    ) || [];
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.is_admin === true;
+  const saved = isAdmin
+    ? [undefined, undefined, undefined]
+    : schedule?.cards.map((c) =>
+        getAllAnswerLogs().find(
+          (a) =>
+            a.username === getCurrentUsername() &&
+            a.date === today &&
+            a.questionId === c.question.id,
+        ),
+      ) || [];
   const missing = saved.findIndex((a) => !a);
-  const resume = saved.length === 3 && missing === -1;
+  const resume = !isAdmin && saved.length === 3 && missing === -1;
   const [cardIndex, setCardIndex] = useState(resume ? 2 : Math.max(0, missing));
   const [results, setResults] = useState<(boolean | undefined)[]>(() =>
     saved.map((a) => a?.isCorrect),
@@ -57,26 +61,74 @@ export default function Play() {
   const [syncVersion, setSyncVersion] = useState(0);
   const [hakbang, setHakbang] = useState(false);
   const [dropping, setDropping] = useState(false);
+  const [finaleCount, setFinaleCount] = useState(1);
   const submissions = useRef<Submission[]>([]);
   const locked = useRef(resume);
   const mounted = useRef(true);
   const coinTimer = useRef<ReturnType<typeof setTimeout>>();
+  const clinkTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const nextButton = useRef<HTMLButtonElement>(null);
   const prompt = useRef<HTMLHeadingElement>(null);
   const question = schedule?.cards[cardIndex]?.question;
+
+  const clearTimers = () => {
+    clearTimeout(coinTimer.current);
+    clinkTimers.current.forEach(clearTimeout);
+    clinkTimers.current = [];
+  };
+
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
-      clearTimeout(coinTimer.current);
+      clearTimers();
     };
   }, []);
+
   useEffect(() => {
     if (feedback) nextButton.current?.focus();
     else prompt.current?.focus();
   }, [feedback, cardIndex]);
 
+  function triggerThreeCoinFinale() {
+    clearTimers();
+    setFinaleCount(3);
+    setDropping(true);
+    playClink(progress.sound);
+    clinkTimers.current = [
+      setTimeout(() => playClink(progress.sound), 300),
+      setTimeout(() => playClink(progress.sound), 600),
+    ];
+    coinTimer.current = setTimeout(() => {
+      if (mounted.current) {
+        setDropping(false);
+        setFinaleCount(1);
+      }
+    }, 1950);
+  }
+
+  function resetForReplay() {
+    clearTimers();
+    submissions.current = [];
+    locked.current = false;
+    setCardIndex(0);
+    setResults([undefined, undefined, undefined]);
+    setSelected(null);
+    setMapping({});
+    setFeedback(false);
+    setComplete(false);
+    setHakbang(false);
+    setDropping(false);
+    setFinaleCount(1);
+    setError("");
+  }
+
   function sync(entry: Submission) {
+    if (isAdmin) {
+      entry.status = "saved";
+      entry.promise = Promise.resolve();
+      return entry.promise;
+    }
     entry.status = "pending";
     entry.promise = recordUserAnswer(entry.id, entry.choice, false, today)
       .then((correct) => {
@@ -96,6 +148,7 @@ export default function Play() {
       });
     return entry.promise;
   }
+
   function answer(choice: string) {
     if (!question || locked.current || busy) return;
     locked.current = true;
@@ -110,6 +163,7 @@ export default function Play() {
     setFeedback(true);
     if (correct) {
       playClink(progress.sound);
+      setFinaleCount(1);
       setDropping(true);
       clearTimeout(coinTimer.current);
       coinTimer.current = setTimeout(() => setDropping(false), 1250);
@@ -118,11 +172,12 @@ export default function Play() {
       index: cardIndex,
       id: question.id,
       choice,
-      status: "pending",
+      status: isAdmin ? "saved" : "pending",
     };
     submissions.current.push(entry);
     void sync(entry);
   }
+
   async function next() {
     if (!feedback || busy) return;
     if (cardIndex < 2) {
@@ -136,24 +191,29 @@ export default function Play() {
     setBusy(true);
     setError("");
     try {
-      await Promise.all(
-        submissions.current.map((s) =>
-          s.status === "error" ? sync(s) : s.promise,
-        ),
-      );
-      if (submissions.current.some((s) => s.status !== "saved"))
-        throw new Error(
-          "Your answers are still on this screen. Reconnect, then retry saving.",
+      if (!isAdmin) {
+        await Promise.all(
+          submissions.current.map((s) =>
+            s.status === "error" ? sync(s) : s.promise,
+          ),
         );
-      // save_progress computes the final score from server answer rows.
-      await recordPlay(today, results.map(Boolean));
-      if (mounted.current) setComplete(true);
+        if (submissions.current.some((s) => s.status !== "saved"))
+          throw new Error(
+            "Your answers are still on this screen. Reconnect, then retry saving.",
+          );
+        await recordPlay(today, results.map(Boolean));
+      }
+      if (mounted.current) {
+        setComplete(true);
+        triggerThreeCoinFinale();
+      }
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
     } finally {
       if (mounted.current) setBusy(false);
     }
   }
+
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (
@@ -188,6 +248,7 @@ export default function Play() {
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
   });
+
   const failed = submissions.current.some((s) => s.status === "error");
   const pending = submissions.current.some((s) => s.status === "pending");
   void syncVersion;
@@ -200,20 +261,25 @@ export default function Play() {
         </Link>
       </div>
     );
-  const finished = complete || Boolean(progress.plays[today]);
+  const finished = complete || (!isAdmin && Boolean(progress.plays[today]));
   if (finished)
     return (
       <div className="play-finished">
         <Alkansya
-          fillPercentage={Math.min(100, (progress.alkansyaCoins / 63) * 100)}
+          fillPercentage={Math.min(
+            100,
+            Math.max(18, (progress.alkansyaCoins / 63) * 100),
+          )}
           animated={dropping}
+          dropCount={finaleCount}
         />
         <h1>
           Well done! +
-          {progress.plays[today]?.barya ?? results.filter(Boolean).length} coins
-          into your Alkansya
+          {(!isAdmin ? progress.plays[today]?.barya : undefined) ??
+            results.filter(Boolean).length}{" "}
+          coins into your Alkansya
         </h1>
-        {(progress.plays[today]?.results.every(Boolean) ||
+        {((!isAdmin && progress.plays[today]?.results.every(Boolean)) ||
           results.filter(Boolean).length === 3) && (
           <p className="perfect-hulog">Perfect Hulog · +1 bonus coin!</p>
         )}
@@ -222,30 +288,26 @@ export default function Play() {
           <h2 className="font-bold">Isang Hakbang · +5 coins</h2>
           <p className="text-sm mt-3 font-semibold">
             {schedule.cards[2].question.hakbangEnglish ||
-              "Write one money step you can take today."}
+              "Take one small money step today."}
           </p>
           <p lang="fil" className="translation">
             {schedule.cards[2].question.hakbang}
           </p>
-          <label className="action-note">
-            My next step <span lang="fil">· Ang susunod kong hakbang</span>
-            <textarea
-              rows={2}
-              maxLength={240}
-              placeholder="A small plan for today…"
-            />
-          </label>
           <button
-            disabled={busy || hakbang || progress.plays[today]?.hakbang}
+            disabled={
+              busy || hakbang || (!isAdmin && progress.plays[today]?.hakbang)
+            }
             className="btn-flame text-sm py-3 w-full"
             onClick={async () => {
               setBusy(true);
               setError("");
               try {
-                await completeHakbang(today);
+                if (!isAdmin) await completeHakbang(today);
                 setHakbang(true);
                 playClink(progress.sound);
+                setFinaleCount(1);
                 setDropping(true);
+                clearTimeout(coinTimer.current);
                 coinTimer.current = setTimeout(() => setDropping(false), 1200);
               } catch (e) {
                 setError((e as Error).message);
@@ -254,7 +316,7 @@ export default function Play() {
               }
             }}
           >
-            {hakbang || progress.plays[today]?.hakbang ? (
+            {hakbang || (!isAdmin && progress.plays[today]?.hakbang) ? (
               <>
                 <Check size={16} />5 coins saved in your Alkansya
               </>
@@ -266,6 +328,15 @@ export default function Play() {
           </button>
         </div>
         {error && <p role="alert">{error}</p>}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={resetForReplay}
+            className="btn-flame w-full text-sm py-3"
+          >
+            <RotateCcw size={16} /> Play Again
+          </button>
+        )}
         <Link to="/" className="btn-ghost w-full">
           Back to My Alkansya
         </Link>
@@ -343,7 +414,11 @@ export default function Play() {
                 {question.items?.map((item) => (
                   <fieldset key={item.key}>
                     <legend>{item.text}</legend>
-                    {item.textFilipino && <p lang="fil" className="translation">{item.textFilipino}</p>}
+                    {item.textFilipino && (
+                      <p lang="fil" className="translation">
+                        {item.textFilipino}
+                      </p>
+                    )}
                     <div>
                       {question.categories?.map((cat) => (
                         <button
@@ -353,7 +428,10 @@ export default function Play() {
                             setMapping((m) => ({ ...m, [item.key]: cat }))
                           }
                         >
-                          <span>{cat}<small lang="fil">{SORT_LABELS[cat] || cat}</small></span>
+                          <span>
+                            {cat}
+                            <small lang="fil">{SORT_LABELS[cat] || cat}</small>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -428,7 +506,11 @@ export default function Play() {
         ) : pending ? (
           "Syncing answers… You can keep playing."
         ) : feedback ? (
-          "Answers saved."
+          isAdmin ? (
+            "Admin test mode · answers not recorded."
+          ) : (
+            "Answers saved."
+          )
         ) : (
           "Keys 1 / 2 / 3 or A / B / C · Enter to continue"
         )}

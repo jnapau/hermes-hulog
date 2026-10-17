@@ -44,8 +44,15 @@ export interface AnswerStatisticsResult {
 
 export function getAnswerStatistics(): AnswerStatisticsResult {
   const allQuestions = getAllQuestions();
-  const allLogs = getAllAnswerLogs();
-  const allUsers = getAllUsers();
+  const allUsers = getAllUsers().filter((u) => !u.is_admin);
+  const adminNames = new Set(
+    getAllUsers()
+      .filter((u) => u.is_admin)
+      .map((u) => u.username.toLowerCase()),
+  );
+  const allLogs = getAllAnswerLogs().filter(
+    (l) => !adminNames.has(l.username.toLowerCase()),
+  );
 
   const tiers: FinancialTier[] = [
     'Cash Management',

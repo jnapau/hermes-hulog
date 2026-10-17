@@ -17,8 +17,14 @@ const summarize = (rows: AnswerLog[]) => ({
     : null,
 });
 export function LearningCharts() {
-  const { logs } = useAuth(),
+  const { users, logs: rawLogs } = useAuth(),
     questions = useAllQuestions();
+  const logs = useMemo(() => {
+    const adminNames = new Set(
+      users.filter((u) => u.is_admin).map((u) => u.username.toLowerCase()),
+    );
+    return rawLogs.filter((l) => !adminNames.has(l.username.toLowerCase()));
+  }, [users, rawLogs]);
   const data = useMemo(() => {
     const byId = new Map(questions.map((q) => [q.id, q]));
     const recent = Array.from({ length: 14 }, (_, i) =>

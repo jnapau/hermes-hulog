@@ -35,16 +35,18 @@ function choices(good, bad, rotation) {
   };
 }
 for (let day = 0; day < 365; day++) {
-  const date = new Date(Date.UTC(2026, 0, day + 1)),
-    scheduledDate = date.toISOString().slice(0, 10),
-    month = date.getUTCMonth(),
-    dom = date.getUTCDate();
+  const baseDate = new Date(Date.UTC(2026, 0, day + 1)),
+    baseIso = baseDate.toISOString().slice(0, 10),
+    month = baseDate.getUTCMonth(),
+    dom = baseDate.getUTCDate(),
+    scheduledYear = baseIso <= "2026-10-15" ? "2027" : "2026",
+    scheduledDate = `${scheduledYear}${baseIso.slice(4)}`;
   for (let s = 0; s < 3; s++) {
     const unit = units[month * 10 + ((dom * 3 + s) % 10)],
       home = households[(dom + s * 11 + month * 7) % households.length],
       positive = day % 2 === 0;
     const q = {
-      id: `H2026-${scheduledDate.slice(5)}-${s + 1}`,
+      id: `H${scheduledDate}-${s + 1}`,
       scheduledDate,
       slot: s + 1,
       course: courses[month],
@@ -133,6 +135,7 @@ for (let day = 0; day < 365; day++) {
     questions.push(q);
   }
 }
+questions.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate) || a.slot - b.slot);
 if (
   questions.length !== 1095 ||
   units.length !== 120 ||

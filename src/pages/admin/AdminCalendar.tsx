@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { scheduleRange, SCHEDULE_START, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
+import { scheduleRange, SCHEDULE_START, SCHEDULE_END, ROLE_LABEL, ROLE_STYLE } from '../../lib/schedule';
 import { todayPH, addDays, formatLong, dayOfWeek, DAY_SHORT } from '../../lib/date';
 import { useAllQuestions } from '../../lib/customQuestions';
 import { TIER_STYLE } from '../../data/types';
@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, Tag, BarChart3 } from 'lucide-react';
 export default function AdminCalendar() {
   const today = todayPH();
   const questions = useAllQuestions();
-  const [startDate, setStartDate] = useState(today);
+  const [startDate, setStartDate] = useState(today < SCHEDULE_START ? SCHEDULE_START : today);
   const [daysCount, setDaysCount] = useState(30);
 
   const days = useMemo(() => {
@@ -18,7 +18,7 @@ export default function AdminCalendar() {
 
   const handleShiftDays = (amount: number) => {
     const next = addDays(startDate, amount);
-    if (next >= SCHEDULE_START) {
+    if (next >= SCHEDULE_START && next <= SCHEDULE_END) {
       setStartDate(next);
     }
   };
@@ -29,7 +29,7 @@ export default function AdminCalendar() {
         <div>
           <h2 className="text-xl font-black text-ink">Curriculum Calendar & Show Dates</h2>
           <p className="text-xs text-ink-muted">
-            Daily deterministic rotation of 3 micro-learning cards across all 365 days of the Philippine calendar year.
+            Daily deterministic rotation of 3 micro-learning cards across all 365 days (Oct 16, 2026 – Oct 15, 2027).
           </p>
         </div>
 
@@ -54,7 +54,7 @@ export default function AdminCalendar() {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setStartDate(today)}
+            onClick={() => setStartDate(today < SCHEDULE_START ? SCHEDULE_START : today)}
             className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-bold text-ink hover:bg-surface-sunk"
           >
             Jump to Today
@@ -74,6 +74,7 @@ export default function AdminCalendar() {
             type="date"
             value={startDate}
             min={SCHEDULE_START}
+            max={SCHEDULE_END}
             onChange={(e) => e.target.value && setStartDate(e.target.value)}
             className="rounded-xl border border-stone-200 px-2.5 py-1 text-xs font-bold text-ink focus:border-brand focus:outline-none"
           />

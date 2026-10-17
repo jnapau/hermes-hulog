@@ -5,12 +5,20 @@ import { useAllQuestions } from "../../lib/customQuestions";
 import { todayPH } from "../../lib/date";
 export default function DashboardAnalytics() {
   const { users, logs } = useAuth();
+  const playerUsers = users.filter((u) => !u.is_admin);
+  const adminNames = new Set(
+    users.filter((u) => u.is_admin).map((u) => u.username.toLowerCase()),
+  );
+  const playerLogs = logs.filter(
+    (l) => !adminNames.has(l.username.toLowerCase()),
+  );
   const questions = useAllQuestions();
   const [error, setError] = useState("");
   const missed = questions
     .map((q) => ({
       q,
-      count: logs.filter((l) => l.questionId === q.id && !l.isCorrect).length,
+      count: playerLogs.filter((l) => l.questionId === q.id && !l.isCorrect)
+        .length,
     }))
     .filter((r) => r.count)
     .sort((a, b) => b.count - a.count)
@@ -31,14 +39,16 @@ export default function DashboardAnalytics() {
       <dl className="analytics-totals">
         <div>
           <dt>Registered users</dt>
-          <dd>{users.length}</dd>
+          <dd>{playerUsers.length}</dd>
         </div>
         <div>
           <dt>Daily active players</dt>
           <dd>
             {
               new Set(
-                logs.filter((l) => l.date === todayPH()).map((l) => l.username),
+                playerLogs
+                  .filter((l) => l.date === todayPH())
+                  .map((l) => l.username),
               ).size
             }
           </dd>
@@ -46,8 +56,8 @@ export default function DashboardAnalytics() {
         <div>
           <dt>Overall accuracy</dt>
           <dd>
-            {logs.length
-              ? `${Math.round((logs.filter((l) => l.isCorrect).length / logs.length) * 100)}%`
+            {playerLogs.length
+              ? `${Math.round((playerLogs.filter((l) => l.isCorrect).length / playerLogs.length) * 100)}%`
               : "No answers yet"}
           </dd>
         </div>

@@ -6,24 +6,23 @@ import {
   canBasag,
   doBasag,
   currentStreak,
-  heritageRank,
 } from "../lib/progress";
-import { todayPH, weekStart, addDays, DAY_SHORT, dayOfWeek } from "../lib/date";
-import { getDaySchedule } from "../lib/schedule";
+import { todayPH, weekStart, addDays, DAY_SHORT } from "../lib/date";
 import { HestiaMascot } from "../components/HestiaMascot";
 import { Alkansya } from "../components/Alkansya";
 import { Modal } from "../components/Modal";
 import { CollectibleArt } from "../components/CollectibleArt";
 import { playBasag } from "../lib/sound";
-import { COLLECTIBLE_BY_ID, COLLECTIBLES } from "../data/collectibles";
+import { COLLECTIBLE_BY_ID } from "../data/collectibles";
 import { useAuth } from "../lib/users";
 import { AuthModal } from "../components/AuthModal";
+
 export default function Home() {
   const progress = useProgress(),
     { currentUser, ownedIds, loading } = useAuth(),
     today = todayPH();
-  const played = Boolean(progress.plays[today]),
-    schedule = getDaySchedule(today);
+  const isAdmin = currentUser?.is_admin === true;
+  const played = !isAdmin && Boolean(progress.plays[today]);
   const [claiming, setClaiming] = useState(false),
     [reward, setReward] = useState<{
       saved: number;
@@ -38,13 +37,7 @@ export default function Home() {
   const goal = progress.targetGoal
     ? COLLECTIBLE_BY_ID[progress.targetGoal]
     : null;
-  const passive = Math.min(
-      6,
-      COLLECTIBLES.filter(
-        (c) => c.financialRole === "Asset" && ownedIds.includes(c.id),
-      ).length,
-    ),
-    rank = heritageRank(ownedIds);
+
   if (loading)
     return (
       <p role="status" className="p-8 text-center">
@@ -66,27 +59,19 @@ export default function Home() {
             ? "A little wiser, every day."
             : "One small drop. A stronger tomorrow."}
         </h1>
-        <p className="text-xs text-ink-muted">
-          {schedule
-            ? `Hulog #${schedule.hulogNumber} · Three cards, one daily habit`
-            : "Your daily money habit"}
-        </p>
         <div className="sanctuary-scene">
           <Alkansya
             fillPercentage={Math.min(100, (progress.alkansyaCoins / 63) * 100)}
           />
           <HestiaMascot pose={played ? "done" : "idle"} height={112} />
         </div>
-        <p className="bank-balance">
-          <strong>{progress.alkansyaCoins} coins</strong> inside your Alkansya
-        </p>
         {played ? (
           <>
             <p className="drop-complete">
               <CheckCircle2 size={18} />
               Daily drop complete.
             </p>
-            {!progress.plays[today].hakbang && (
+            {!progress.plays[today]?.hakbang && (
               <Link to="/play" className="btn-flame sanctuary-cta">
                 Finish Isang Hakbang · +5 coins
               </Link>
@@ -100,36 +85,35 @@ export default function Home() {
         )}
         <dl className="player-stats">
           <div>
-            <dt>Spendable Wallet</dt>
+            <dt>Alkansya</dt>
+            <dd>{progress.alkansyaCoins} coins</dd>
+          </div>
+          <div>
+            <dt>Wallet</dt>
             <dd>{currentUser.coins} coins</dd>
           </div>
           <div>
-            <dt>Current streak</dt>
+            <dt>Streak</dt>
             <dd>{currentStreak(progress, today)} days</dd>
-          </div>
-          <div>
-            <dt>Sunday asset bonus</dt>
-            <dd>+{passive} coins</dd>
           </div>
         </dl>
         {goal && !ownedIds.includes(goal.id) ? (
           <Link className="savings-goal" to="/koleksyon">
             <CollectibleArt item={goal} />
             <div>
-              <strong>Saving for: {goal.nameEnglish}</strong>
-              <p>
+              <strong>
+                Saving for: {goal.nameEnglish} ·{" "}
                 {Math.min(
                   goal.price,
                   currentUser.coins + progress.alkansyaCoins,
-                )}{" "}
-                / {goal.price} coins
-              </p>
+                )}
+                /{goal.price} coins
+              </strong>
               <progress
                 max={goal.price}
                 value={currentUser.coins + progress.alkansyaCoins}
                 aria-label={`Saving for ${goal.nameEnglish}`}
               />
-              <small>Wallet + bank savings · collect on Sunday to spend</small>
             </div>
           </Link>
         ) : (
@@ -154,7 +138,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        {ready ? (
+        {ready && (
           <button
             disabled={claiming}
             className="weekly-reward"
@@ -177,24 +161,7 @@ export default function Home() {
             {claiming ? "Collecting…" : "Open Alkansya & Collect Coins"}
             <small lang="fil">Buksan ang Alkansya</small>
           </button>
-        ) : (
-          <p className="bank-help">
-            {progress.cashouts[weekStart(today)]
-              ? "This week’s coins are in your Wallet. New deposits stay safe until next Sunday."
-              : dayOfWeek(today) === 0
-                ? "Finish today’s three cards to open your Alkansya."
-                : "Your savings carry over. Complete Sunday’s drop to collect."}
-          </p>
         )}
-        {played && !progress.plays[today].hakbang && ready && (
-          <p className="bank-help">
-            Tip: finish Isang Hakbang before collecting to include today’s +5.
-          </p>
-        )}
-        <p className="heritage-summary">
-          {rank.name} · {rank.worth} Heritage Net Worth · {progress.restTokens}{" "}
-          Pahinga shields
-        </p>
         {error && (
           <p role="alert" className="text-sm text-red-800">
             {error}

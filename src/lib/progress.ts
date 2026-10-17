@@ -271,6 +271,7 @@ export async function recordPlay(
   today: ISODate,
   results: boolean[],
 ): Promise<void> {
+  if (getCurrentUser()?.is_admin) return;
   if (state.plays[today]) return;
   const next: Progress = {
     ...state,
@@ -306,6 +307,7 @@ export async function recordPlay(
 }
 
 export async function completeHakbang(today: ISODate): Promise<void> {
+  if (getCurrentUser()?.is_admin) return;
   const rec = state.plays[today];
   if (!rec || rec.hakbang) return;
   await save({

@@ -2,17 +2,21 @@ import { useId } from "react";
 interface AlkansyaProps {
   fillPercentage?: number; // 0 to 100
   animated?: boolean;
+  dropCount?: number;
   className?: string;
 }
 
 export function Alkansya({
   fillPercentage = 25,
   animated = false,
+  dropCount = 1,
   className = "",
 }: AlkansyaProps) {
   const uid = useId().replace(/:/g, "");
   const clampedFill = Math.min(100, Math.max(0, fillPercentage));
   const fillHeight = (clampedFill / 100) * 110;
+  const coinsToDrop = animated ? Math.max(1, dropCount) : 0;
+  const dropIndices = Array.from({ length: coinsToDrop }, (_, idx) => idx);
 
   return (
     <div
@@ -72,7 +76,7 @@ export function Alkansya({
           </clipPath>
         </defs>
 
-        <g className={animated ? "bamboo-bounce" : ""}>
+        <g className={animated ? (coinsToDrop > 1 ? "bamboo-bounce-multi" : "bamboo-bounce") : ""}>
           {/* Alkansya Body */}
           <rect
             x="25"
@@ -230,36 +234,42 @@ export function Alkansya({
               </g>
             )}
 
-            {/* Glass sheen highlight */}
-            {animated && (
-              <g
-                className="bank-landing-coin"
-                style={
-                  {
-                    "--landing": `${Math.max(62, 151 - fillHeight)}px`,
-                  } as React.CSSProperties
-                }
-              >
-                <circle
-                  cx="80"
-                  cy="0"
-                  r="7"
-                  fill={`url(#${uid}-goldCoinGrad)`}
-                  stroke="#fff0ab"
-                  strokeWidth="1.5"
-                />
-                <text
-                  x="80"
-                  y="3"
-                  textAnchor="middle"
-                  fill="#946021"
-                  fontSize="8"
-                  fontWeight="bold"
+            {/* Landing coins inside window */}
+            {dropIndices.map((coinIdx) => {
+              const offsetX = coinIdx === 0 ? 0 : coinIdx === 1 ? -11 : 11;
+              return (
+                <g
+                  key={coinIdx}
+                  className="bank-landing-coin"
+                  style={
+                    {
+                      "--landing": `${Math.max(62, 151 - fillHeight - coinIdx * 5)}px`,
+                      animationDelay: `${coinIdx * 300}ms`,
+                    } as React.CSSProperties
+                  }
                 >
-                  ₱
-                </text>
-              </g>
-            )}
+                  <circle
+                    cx={80 + offsetX}
+                    cy="0"
+                    r="7"
+                    fill={`url(#${uid}-goldCoinGrad)`}
+                    stroke="#fff0ab"
+                    strokeWidth="1.5"
+                  />
+                  <text
+                    x={80 + offsetX}
+                    y="3"
+                    textAnchor="middle"
+                    fill="#946021"
+                    fontSize="8"
+                    fontWeight="bold"
+                  >
+                    ₱
+                  </text>
+                </g>
+              );
+            })}
+            {/* Glass sheen highlight */}
             <path
               d="M 45 52 L 65 52 L 45 155 Z"
               fill="#FFFFFF"
@@ -280,69 +290,80 @@ export function Alkansya({
           <ellipse cx="80" cy="38" rx="42" ry="8" fill="#5A3E1B" />
           {/* Slit */}
           <rect x="62" y="35" width="36" height="5.5" rx="2.5" fill="#1C1309" />
-          {animated && (
-            <>
-              <ellipse
-                cx="80"
-                cy="38"
-                rx="24"
-                ry="5"
-                fill="none"
-                stroke="#ffe7a0"
-                strokeWidth="3"
-                className="slot-glow"
-              />
-              <g clipPath={`url(#${uid}-slotLip)`}>
-                <g className="peso-flight">
-                  <g className="peso-spin">
-                    <circle cx="82" cy="0" r="12" fill="#a96819" />
-                    <circle
-                      cx="80"
-                      cy="0"
-                      r="12"
-                      fill={`url(#${uid}-goldCoinGrad)`}
-                      stroke="#fff0a3"
-                      strokeWidth="1.4"
-                    />
-                    <circle
-                      cx="80"
-                      cy="0"
-                      r="9"
-                      fill="none"
-                      stroke="#bb802c"
-                      strokeDasharray="1 1.6"
-                    />
-                    <text
-                      x="80"
-                      y="5"
-                      textAnchor="middle"
-                      fontSize="16"
-                      fontWeight="bold"
-                      fill="#85551d"
-                    >
-                      ₱
-                    </text>
-                  </g>
-                </g>
-              </g>
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <circle
-                  key={i}
+          {dropIndices.map((coinIdx) => {
+            const delay = `${coinIdx * 300}ms`;
+            return (
+              <g key={coinIdx}>
+                <ellipse
                   cx="80"
                   cy="38"
-                  r="2"
-                  fill="#ffdf75"
-                  className="slot-spark"
-                  style={
-                    {
-                      "--dx": `${Math.cos((i * Math.PI) / 3) * 29}px`,
-                      "--dy": `${Math.sin((i * Math.PI) / 3) * 15 - 12}px`,
-                    } as React.CSSProperties
-                  }
+                  rx="24"
+                  ry="5"
+                  fill="none"
+                  stroke="#ffe7a0"
+                  strokeWidth="3"
+                  className="slot-glow"
+                  style={{ animationDelay: delay }}
                 />
-              ))}
-            </>
-          )}
+                <g clipPath={`url(#${uid}-slotLip)`}>
+                  <g
+                    className="peso-flight"
+                    style={{ animationDelay: delay }}
+                  >
+                    <g
+                      className="peso-spin"
+                      style={{ animationDelay: delay }}
+                    >
+                      <circle cx="82" cy="0" r="12" fill="#a96819" />
+                      <circle
+                        cx="80"
+                        cy="0"
+                        r="12"
+                        fill={`url(#${uid}-goldCoinGrad)`}
+                        stroke="#fff0a3"
+                        strokeWidth="1.4"
+                      />
+                      <circle
+                        cx="80"
+                        cy="0"
+                        r="9"
+                        fill="none"
+                        stroke="#bb802c"
+                        strokeDasharray="1 1.6"
+                      />
+                      <text
+                        x="80"
+                        y="5"
+                        textAnchor="middle"
+                        fontSize="16"
+                        fontWeight="bold"
+                        fill="#85551d"
+                      >
+                        ₱
+                      </text>
+                    </g>
+                  </g>
+                </g>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <circle
+                    key={i}
+                    cx="80"
+                    cy="38"
+                    r="2"
+                    fill="#ffdf75"
+                    className="slot-spark"
+                    style={
+                      {
+                        "--dx": `${Math.cos((i * Math.PI) / 3) * 29}px`,
+                        "--dy": `${Math.sin((i * Math.PI) / 3) * 15 - 12}px`,
+                        animationDelay: delay,
+                      } as React.CSSProperties
+                    }
+                  />
+                ))}
+              </g>
+            );
+          })}
 
           {/* Bottom Base */}
           <ellipse
@@ -359,3 +380,4 @@ export function Alkansya({
     </div>
   );
 }
+
