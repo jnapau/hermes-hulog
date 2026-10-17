@@ -36,6 +36,7 @@ const baseProgress = {
 };
 const errors = [];
 async function session(viewport, admin = false) {
+  const practiceWrites=[];
   const ctx = await browser.newContext({ viewport });
   await ctx.addInitScript(
     ({ user }) => {
@@ -93,6 +94,7 @@ async function session(viewport, admin = false) {
       const req = route.request(),
         url = new URL(req.url()),
         body = req.postDataJSON() || {};
+      if(admin && /\/(submit_answer|save_progress)$/.test(url.pathname))practiceWrites.push(url.pathname);
       let data = [];
       if (url.pathname.includes("/auth/")) data = { user };
       else if (url.pathname.endsWith("/questions")) {
@@ -180,7 +182,7 @@ async function session(viewport, admin = false) {
     errors.push(e.message);
     console.error("Browser runtime:", e.message);
   });
-  return { ctx, page, getProfile: () => profile };
+  return { ctx, page, getProfile: () => profile, practiceWrites };
 }
 try {
   for (const [label, viewport] of [
@@ -217,7 +219,8 @@ try {
     await page.getByText("In your collection", { exact: true }).waitFor();
     assert.equal(getProfile().coins, 70);
     await page.getByRole("button", { name: "Close details" }).click();
-    await page.goto("http://127.0.0.1:5173/play");
+    await page.goto("http://127.0.0.1:5173/play?day=365");
+    assert.equal(await page.getByLabel('Practice day',{exact:true}).count(),0,'players cannot choose practice days');
     await page.locator(".play-question h1").waitFor();
     const heading = await page.locator(".play-question h1").textContent();
     assert.equal(
@@ -268,6 +271,24 @@ try {
     await page.screenshot({ path: `${out}/${label}-payout.png` });
     await ctx.close();
     const a = await session(viewport, true);
+    const adminBefore=structuredClone(a.getProfile());
+    await a.page.goto('http://127.0.0.1:5173/play');
+    await a.page.getByLabel('Practice day',{exact:true}).selectOption('365');
+    await a.page.getByRole('heading',{name:seed.questions.find(q=>q.sequence_day===365&&q.slot===1).payload.prompt,exact:true}).waitFor();
+    for(let slot=1;slot<=3;slot++){
+      const q=seed.questions.find(q=>q.sequence_day===365&&q.slot===slot).payload;
+      const options=q.kind==='binary'?(q.format==='Scam o Legit?'?['SCAM','LEGIT']:['TAMA','MALI']):q.options.map(o=>o.key);
+      await a.page.locator('.play-answers button').nth(options.indexOf(q.answer)).click();
+      await a.page.getByRole('button',{name:slot<3?'Next Card →':'Save drop & view results →',exact:true}).click();
+    }
+    await a.page.getByRole('heading',{name:'Practice complete · 3/3 correct',exact:true}).waitFor();
+    await a.page.getByRole('button',{name:'Play Again',exact:true}).click();
+    await a.page.getByRole('heading',{name:seed.questions.find(q=>q.sequence_day===365&&q.slot===1).payload.prompt,exact:true}).waitFor();
+    await a.page.screenshot({path:out+'/'+label+'-admin-practice.png',fullPage:true});
+    await a.page.getByLabel('Practice day',{exact:true}).selectOption('1');
+    await a.page.getByRole('heading',{name:seed.questions.find(q=>q.sequence_day===1&&q.slot===1).payload.prompt,exact:true}).waitFor();
+    assert.deepEqual(a.getProfile(),adminBefore,'admin practice leaves account progress and coins unchanged');
+    assert.deepEqual(a.practiceWrites,[],'admin practice never sends recording RPCs');
     await a.page.goto('http://127.0.0.1:5173/admin/questions');
     await a.page.getByRole('heading',{name:'365-day learning curriculum'}).waitFor();
     await a.page.getByRole('heading',{name:'Day #1 · FRP 101 · foundational'}).waitFor();

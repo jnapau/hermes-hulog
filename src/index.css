@@ -811,6 +811,20 @@ meter {
   flex-direction: column;
   gap: 12px;
 }
+.admin-practice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid #d5b88e;
+  border-radius: 12px;
+  color: #4a2a12;
+  font-size: 14px;
+}
+.admin-practice-controls label { font-weight: 700; }
+.admin-practice-controls select { width: auto; flex: 1; min-width: 100px; }
+.admin-practice-controls p { flex-basis: 100%; font-size: 12px; line-height: 1.5; }
 .play-top {
   display: flex;
   gap: 12px;

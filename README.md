@@ -4,6 +4,8 @@ React 18, TypeScript, Tailwind, Vite and Supabase. Three daily Filipino financia
 
 Each player follows a personal 365-day curriculum. Their current day is `(completed drops excluding today % 365) + 1`; missing calendar days never skips lessons, and saving today never changes today's cards. Stages progress from FRP 101 Foundational to FRP 108 Advanced, with Sweldo Hulog Special every 15th learning day. Daily completion limits and Sunday rewards still use Asia/Manila calendar dates. Existing completed drops count toward the sequence; administrator practice remains unrecorded.
 
+Administrators can choose any Day 1–365 from the Practice day picker in `/play`, including after finishing a practice round. Switching days starts a fresh round; practice never saves answers, changes progress, or awards coins. Regular players cannot access this picker and continue on their assigned sequence day.
+
 ## Run locally
 
 1. Run `npm ci`.

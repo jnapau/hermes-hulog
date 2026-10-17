@@ -1,8 +1,8 @@
 /** Per-player learning sequence; calendar dates only enforce daily limits and rewards. */
 import type { Question } from '../data/types';
 import { dayOfWeek, type ISODate } from './date';
-import { dailyQuestions } from './customQuestions';
-import { activeSequenceDay } from './dailyQuestions';
+import { dailyQuestions, getAllQuestions } from './customQuestions';
+import { activeSequenceDay, selectSequenceQuestions } from './dailyQuestions';
 import { getProgress, type Progress } from './progress';
 
 export type CardRole = 'new' | 'review' | 'personal' | 'boss';
@@ -32,6 +32,14 @@ export interface DaySchedule {
   isSunday: boolean;
   cards: ScheduledCard[];
   tags: string[];
+}
+
+/** Admin practice uses the exact curriculum day, independent of calendar overrides. */
+export function getPracticeSchedule(date: ISODate, sequenceDay: number): DaySchedule | null {
+  if (!Number.isInteger(sequenceDay) || sequenceDay < 1 || sequenceDay > 365) return null;
+  const assigned = selectSequenceQuestions(getAllQuestions(), sequenceDay);
+  if (assigned.length !== 3) return null;
+  return { date, hulogNumber: sequenceDay, isSunday: dayOfWeek(date) === 0, cards: assigned.map(question => ({ question, role: 'new' })), tags: sequenceDay % 15 === 0 ? ['Sweldo Hulog Special'] : [] };
 }
 
 /** Calendar dates enforce the daily limit; completed drops choose the curriculum day. */

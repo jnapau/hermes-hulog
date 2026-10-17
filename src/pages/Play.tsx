@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Check, RotateCcw } from "lucide-react";
 import { todayPH } from "../lib/date";
-import { getDaySchedule } from "../lib/schedule";
+import { getDaySchedule, getPracticeSchedule } from "../lib/schedule";
+import { activeSequenceDay, CURRICULUM_DAYS } from "../lib/dailyQuestions";
 import { recordPlay, completeHakbang, useProgress } from "../lib/progress";
 import { playClink, playSoft, unlockAudio } from "../lib/sound";
 import { Alkansya } from "../components/Alkansya";
@@ -31,9 +32,10 @@ type Submission = {
 export default function Play() {
   const today = todayPH();
   const progress = useProgress();
-  const schedule = getDaySchedule(today, progress);
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.is_admin === true;
+  const [practiceDay, setPracticeDay] = useState(() => activeSequenceDay(today, progress.plays));
+  const schedule = isAdmin ? getPracticeSchedule(today, practiceDay) : getDaySchedule(today, progress);
   const saved = isAdmin
     ? [undefined, undefined, undefined]
     : schedule?.cards.map((c) =>
@@ -252,9 +254,22 @@ export default function Play() {
   const failed = submissions.current.some((s) => s.status === "error");
   const pending = submissions.current.some((s) => s.status === "pending");
   void syncVersion;
+  const practiceControls = isAdmin && (
+    <section className="admin-practice-controls" aria-label="Administrator practice">
+      <label htmlFor="practice-day">Practice day</label>
+      <select id="practice-day" className="field" value={practiceDay} disabled={busy} onChange={event => {
+        resetForReplay();
+        setPracticeDay(Number(event.target.value));
+      }}>
+        {Array.from({ length: CURRICULUM_DAYS }, (_, index) => <option key={index + 1} value={index + 1}>Day {index + 1}</option>)}
+      </select>
+      <p>Unlimited practice. Answers, progress, and coins are not saved.</p>
+    </section>
+  );
   if (!schedule || !question)
     return (
       <div className="p-8 text-center">
+        {practiceControls}
         <p>Today’s cards could not load. Please refresh to retry.</p>
         <Link to="/" className="btn-ghost mt-4">
           Return home
@@ -265,6 +280,7 @@ export default function Play() {
   if (finished)
     return (
       <div className="play-finished">
+        {practiceControls}
         <Alkansya
           fillPercentage={Math.min(
             100,
@@ -274,18 +290,15 @@ export default function Play() {
           dropCount={finaleCount}
         />
         <h1>
-          Well done! +
-          {(!isAdmin ? progress.plays[today]?.barya : undefined) ??
-            results.filter(Boolean).length}{" "}
-          coins into your Alkansya
+          {isAdmin ? `Practice complete · ${results.filter(Boolean).length}/3 correct` : `Well done! +${progress.plays[today]?.barya ?? results.filter(Boolean).length} coins into your Alkansya`}
         </h1>
         {((!isAdmin && progress.plays[today]?.results.every(Boolean)) ||
           results.filter(Boolean).length === 3) && (
-          <p className="perfect-hulog">Perfect Hulog · +1 bonus coin!</p>
+          <p className="perfect-hulog">{isAdmin ? 'Perfect practice round!' : 'Perfect Hulog · +1 bonus coin!'}</p>
         )}
         <p className="text-sm">Three small lessons. One stronger habit.</p>
         <div className="hakbang">
-          <h2 className="font-bold">Isang Hakbang · +5 coins</h2>
+          <h2 className="font-bold">{isAdmin ? 'Isang Hakbang · Practice step' : 'Isang Hakbang · +5 coins'}</h2>
           <p className="text-sm mt-3 font-semibold">
             {schedule.cards[2].question.hakbangEnglish ||
               "Take one small money step today."}
@@ -318,12 +331,12 @@ export default function Play() {
           >
             {hakbang || (!isAdmin && progress.plays[today]?.hakbang) ? (
               <>
-                <Check size={16} />5 coins saved in your Alkansya
+                <Check size={16} />{isAdmin ? 'Practice step complete' : '5 coins saved in your Alkansya'}
               </>
             ) : busy ? (
               "Saving…"
             ) : (
-              "I completed this step · +5 coins"
+              isAdmin ? 'I practiced this step' : "I completed this step · +5 coins"
             )}
           </button>
         </div>
@@ -356,6 +369,7 @@ export default function Play() {
       : question.options || [];
   return (
     <div className="play-viewport">
+      {practiceControls}
       <header className="play-top">
         <Link to="/" aria-label="Exit daily drop">
           <ArrowLeft size={20} />
