@@ -35,15 +35,16 @@ function choices(good, bad, rotation) {
   };
 }
 for (let day = 0; day < 365; day++) {
-  const baseDate = new Date(Date.UTC(2026, 0, day + 1)),
-    baseIso = baseDate.toISOString().slice(0, 10),
-    month = baseDate.getUTCMonth(),
-    dom = baseDate.getUTCDate(),
-    scheduledYear = baseIso <= "2026-10-15" ? "2027" : "2026",
-    scheduledDate = `${scheduledYear}${baseIso.slice(4)}`;
+  const date = new Date(Date.UTC(2026, 9, 16 + day)),
+    scheduledDate = date.toISOString().slice(0, 10),
+    dom = date.getUTCDate(),
+    // Learning months start on the 16th, independently of calendar-year changes.
+    month = (date.getUTCFullYear() - 2026) * 12 + date.getUTCMonth() - 9 - (dom < 16 ? 1 : 0),
+    monthStart = Date.UTC(2026, 9 + month, 16),
+    curriculumDay = Math.round((date.getTime() - monthStart) / 86400000) + 1;
   for (let s = 0; s < 3; s++) {
-    const unit = units[month * 10 + ((dom * 3 + s) % 10)],
-      home = households[(dom + s * 11 + month * 7) % households.length],
+    const unit = units[month * 10 + ((curriculumDay * 3 + s) % 10)],
+      home = households[(curriculumDay + s * 11 + month * 7) % households.length],
       positive = day % 2 === 0;
     const q = {
       id: `H${scheduledDate}-${s + 1}`,

@@ -48,6 +48,36 @@ const { selectDailyQuestions } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`
 );
 assert.equal(seed.questions.length, 1095);
+const curriculumMilestones = [
+  ['2026-10-16', 101, 'foundational'],
+  ['2026-11-16', 102, 'foundational'],
+  ['2026-12-16', 103, 'foundational'],
+  ['2027-01-01', 103, 'foundational'],
+  ['2027-01-16', 103, 'intermediate'],
+  ['2027-02-16', 104, 'intermediate'],
+  ['2027-03-16', 104, 'intermediate'],
+  ['2027-04-16', 105, 'intermediate'],
+  ['2027-05-16', 105, 'intermediate'],
+  ['2027-06-16', 106, 'advanced'],
+  ['2027-07-16', 107, 'advanced'],
+  ['2027-08-16', 108, 'advanced'],
+  ['2027-09-16', 108, 'advanced'],
+  ['2027-10-15', 108, 'advanced'],
+];
+for (const [date, course, progression] of curriculumMilestones) {
+  const cards = seed.questions.filter(q => q.scheduled_date === date);
+  assert.equal(cards.length, 3, `three curriculum cards on ${date}`);
+  for (const { payload } of cards) {
+    assert.equal(payload.course, course, `curriculum course on ${date}`);
+    assert.equal(payload.progression, progression, `curriculum level on ${date}`);
+  }
+}
+const progressionRank = { foundational: 0, intermediate: 1, advanced: 2 };
+const chronological = [...seed.questions].sort((a,b) => a.scheduled_date.localeCompare(b.scheduled_date) || a.slot - b.slot);
+for (let i = 1; i < chronological.length; i++) {
+  assert.ok(chronological[i].payload.course >= chronological[i-1].payload.course, 'curriculum courses never reset');
+  assert.ok(progressionRank[chronological[i].payload.progression] >= progressionRank[chronological[i-1].payload.progression], 'curriculum levels never regress');
+}
 const catalogSize = seed.collection_items.length;
 assert.equal(catalogSize, 58);
 for (const key of ["id", "nameEnglish", "nameFilipino"]) {
