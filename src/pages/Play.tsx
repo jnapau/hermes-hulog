@@ -4,6 +4,7 @@ import { ArrowLeft, Check, RotateCcw } from "lucide-react";
 import { todayPH } from "../lib/date";
 import { getDaySchedule, getPracticeSchedule } from "../lib/schedule";
 import { activeSequenceDay, CURRICULUM_DAYS } from "../lib/dailyQuestions";
+import { useAllQuestions } from "../lib/customQuestions";
 import { recordPlay, completeHakbang, useProgress } from "../lib/progress";
 import { playClink, playSoft, unlockAudio } from "../lib/sound";
 import { Alkansya } from "../components/Alkansya";
@@ -30,6 +31,7 @@ type Submission = {
 };
 
 export default function Play() {
+  const questions = useAllQuestions();
   const today = todayPH();
   const progress = useProgress();
   const { currentUser } = useAuth();
@@ -257,7 +259,7 @@ export default function Play() {
   const practiceControls = isAdmin && (
     <section className="admin-practice-controls" aria-label="Administrator practice">
       <label htmlFor="practice-day">Practice day</label>
-      <select id="practice-day" className="field" value={practiceDay} disabled={busy} onChange={event => {
+      <select id="practice-day" className="field" value={practiceDay} disabled={busy || questions.length === 0} onChange={event => {
         resetForReplay();
         setPracticeDay(Number(event.target.value));
       }}>
