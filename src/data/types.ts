@@ -32,6 +32,9 @@ export interface QuestionCommunityStats {
 }
 
 export interface Question {
+  difficulty?: 'easy' | 'medium' | 'challenge';
+  progression?: 'foundational' | 'intermediate' | 'advanced';
+  paydaySpecial?: boolean;
   scheduledDate?: string | null;
   recurringDay?: number | null;
   slot?: number;

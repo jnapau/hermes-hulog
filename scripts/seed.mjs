@@ -7,7 +7,10 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !HULOG_ADMIN_PASSWORD) throw 
 const db=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const seed=JSON.parse(readFileSync(new URL('../supabase/seed-data.json',import.meta.url),'utf8'));
 for(const table of ['questions','collection_items']) {
- const {error}=await db.from(table).upsert(seed[table],{onConflict:'id',ignoreDuplicates:true});if(error)throw error;
+ // Idempotent updates keep fixes and explicit calendar assignments in sync.
+ for (let offset=0;offset<seed[table].length;offset+=200) {
+  const {error}=await db.from(table).upsert(seed[table].slice(offset,offset+200),{onConflict:'id'});if(error)throw error;
+ }
 }
 const email='hermeshulog@players.hulog.internal';
 let admin;
@@ -18,4 +21,9 @@ if(admin && !admin.app_metadata?.hulog_seed) throw new Error('Reserved admin ide
 if(!admin){const {data,error}=await db.auth.admin.createUser({email,password:HULOG_ADMIN_PASSWORD,email_confirm:true,user_metadata:{username:`seed_${randomUUID().replaceAll('-','').slice(0,16)}`},app_metadata:{hulog_seed:true}});if(error)throw error;admin=data.user;}
 const {error:metadataError}=await db.auth.admin.updateUserById(admin.id,{user_metadata:{username:'hermeshulog'}});if(metadataError)throw metadataError;
 const {error}=await db.from('profiles').update({username:'hermeshulog',is_admin:true}).eq('id',admin.id).select('id').single();if(error)throw error;
+// Backfill every admin, including users promoted before catalog seeding.
+const {data:admins,error:adminsError}=await db.from('profiles').select('id').eq('is_admin',true);if(adminsError)throw adminsError;
+for(const account of admins) {
+ const {error:unlockError}=await db.from('user_collections').upsert(seed.collection_items.map(i=>({user_id:account.id,item_id:i.id,category:i.category})),{onConflict:'user_id,item_id',ignoreDuplicates:true});if(unlockError)throw unlockError;
+}
 console.log('Curriculum, collections, and hermeshulog administrator verified.');

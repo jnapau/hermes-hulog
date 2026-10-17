@@ -16,7 +16,7 @@ import { addDays, dayOfWeek, diffDays, type ISODate } from './date';
 import { dailyQuestions, getAllQuestions } from './customQuestions';
 
 /** Day #1 of Hulog. Monday, October 12, 2026. */
-export const SCHEDULE_START: ISODate = '2026-10-12';
+export const SCHEDULE_START: ISODate = '2026-01-01';
 
 export type CardRole = 'new' | 'review' | 'personal' | 'boss';
 

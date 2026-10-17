@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { COLLECTIBLES } from '../data/collectibles';
 import { todayPH } from './date';
 import { configured, reportError, supabase } from './supabase';
 export interface User { id: string; username: string; registeredAt: string; is_admin: boolean; coins: number; streak: number; unlocked: number }
@@ -25,14 +26,14 @@ export async function refreshAccount() {
   if (run !== generation) return;
   if (profile.error || collections.error) { state.loading = false; notify(); throw new Error('Your account could not load. Please refresh to try again.'); }
   const p = profile.data;
-  state.currentUser = userFrom(p, collections.data?.length);
-  state.ownedIds = (collections.data || []).map(c => c.item_id);
+  state.ownedIds = p.is_admin ? COLLECTIBLES.map(c => c.id) : (collections.data || []).map(c => c.item_id);
+  state.currentUser = userFrom(p, state.ownedIds.length);
   state.equippedLook = p.equipped_outfit;
   state.users = [state.currentUser];
   if (p.is_admin) {
     const [users, logs, owned] = await Promise.all([readRows('profiles'), readRows('user_answers'), readRows('user_collections')]);
     if (run !== generation) return;
-    state.users = users.map(u => userFrom(u as Parameters<typeof userFrom>[0], owned.filter(c => c.user_id === u.id).length));
+    state.users = users.map(u => userFrom(u as Parameters<typeof userFrom>[0], u.is_admin ? COLLECTIBLES.length : owned.filter(c => c.user_id === u.id).length));
     state.logs = logs.map(a => ({ id: a.id, username: state.users.find(u => u.id === a.user_id)?.username || 'Deleted user', questionId: a.question_id, userChoice: a.user_choice, isCorrect: a.is_correct, date: a.play_date, timestamp: a.answered_at }));
   } else {
     const { data, error } = await supabase.from('user_answers').select('*').eq('user_id',session.user.id).eq('play_date',todayPH());
