@@ -26,7 +26,7 @@ export async function refreshAccount() {
   if (run !== generation) return;
   if (profile.error || collections.error) { state.loading = false; notify(); throw new Error('Your account could not load. Please refresh to try again.'); }
   const p = profile.data;
-  state.ownedIds = p.is_admin ? COLLECTIBLES.map(c => c.id) : (collections.data || []).map(c => c.item_id);
+  state.ownedIds = p.is_admin ? COLLECTIBLES.map(c => c.id) : (collections.data || []).map(c => c.item_id).filter(id => COLLECTIBLES.some(c => c.id === id));
   state.currentUser = userFrom(p, state.ownedIds.length);
   state.equippedLook = p.equipped_outfit;
   state.users = [state.currentUser];
