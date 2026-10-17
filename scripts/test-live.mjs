@@ -59,6 +59,19 @@ try {
   assert.ok((await player.rpc('equip_item',{p_item:wearable.id})).error,'locked outfits cannot be equipped');
   check(await admin.auth.signInWithPassword({email:'hermeshulog@players.hulog.internal',password:process.env.HULOG_ADMIN_PASSWORD}));
   assert.equal(check(await admin.from('profiles').select('is_admin').eq('username','hermeshulog').single()).is_admin,true);
+  const adminBefore=check(await admin.from('profiles').select('*').eq('username','hermeshulog').single());
+  assert.equal(adminBefore.coins,0);assert.equal(adminBefore.streak,0);
+  const adminIds=check(await admin.rpc('daily_question_ids',{p_date:date}));
+  const adminCards=check(await admin.from('questions').select('*').in('id',adminIds.map(q=>q.id)));
+  for(let round=0;round<2;round++)for(const card of adminCards){
+    assert.equal(check(await admin.rpc('submit_answer',{p_question:card.id,p_choice:card.correct_answer})),true);
+  }
+  check(await admin.rpc('save_progress',{p_progress:{plays:{[date]:{results:[true,true,true],hakbang:true}},alkansyaCoins:999,bestStreak:999}}));
+  const adminAfter=check(await admin.from('profiles').select('*').eq('id',adminBefore.id).single());
+  assert.equal(adminAfter.coins,0);assert.equal(adminAfter.streak,0);
+  assert.equal(adminAfter.progress.alkansyaCoins,0);assert.equal(adminAfter.progress.bestStreak,0);
+  assert.deepEqual(adminAfter.progress.plays,adminBefore.progress.plays,'admin practice never records daily completion');
+  assert.ok((await admin.rpc('open_alkansya')).error,'admin weekly payouts are blocked');
   check(await admin.rpc('set_admin',{p_user:userId,p_admin:true}));
   assert.equal(check(await player.from('profiles').select('is_admin').eq('id',userId).single()).is_admin,true);
   check(await admin.rpc('set_admin',{p_user:userId,p_admin:false}));

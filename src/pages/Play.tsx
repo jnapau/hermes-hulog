@@ -265,7 +265,7 @@ export default function Play() {
       }}>
         {Array.from({ length: CURRICULUM_DAYS }, (_, index) => <option key={index + 1} value={index + 1}>Day {index + 1}</option>)}
       </select>
-      <p>Unlimited practice. Answers, progress, and coins are not saved.</p>
+      <p>Unlimited practice. Answers and personal progress are not saved.</p>
     </section>
   );
   if (!schedule || !question)
@@ -284,11 +284,11 @@ export default function Play() {
       <div className="play-finished">
         {practiceControls}
         <Alkansya
-          fillPercentage={Math.min(
+          fillPercentage={isAdmin ? 0 : Math.min(
             100,
             Math.max(18, (progress.alkansyaCoins / 63) * 100),
           )}
-          animated={dropping}
+          animated={!isAdmin && dropping}
           dropCount={finaleCount}
         />
         <h1>
@@ -470,16 +470,16 @@ export default function Play() {
           <div className="feedback-title">
             <strong role="status">
               {results[cardIndex]
-                ? "Correct! Coin on its way."
+                ? (isAdmin ? "Correct!" : "Correct! Coin on its way.")
                 : "A useful lesson for next time."}
             </strong>
             <div className="mini-bank">
               <Alkansya
-                fillPercentage={Math.min(
+                fillPercentage={isAdmin ? 0 : Math.min(
                   100,
                   (progress.alkansyaCoins / 63) * 100,
                 )}
-                animated={dropping}
+                animated={!isAdmin && dropping}
               />
             </div>
           </div>

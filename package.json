@@ -11,7 +11,8 @@
     "test:art": "node scripts/test-artwork.mjs",
     "test:db": "node scripts/build-seed.mjs && node scripts/test-database.mjs",
     "seed": "node scripts/seed.mjs",
-    "setup:admin": "node scripts/setup-admin.mjs"
+    "setup:admin": "node scripts/setup-admin.mjs",
+    "test": "node scripts/build-seed.mjs && node scripts/test-questions.mjs && node scripts/test-database.mjs && node scripts/test-artwork.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",

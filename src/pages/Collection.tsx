@@ -21,6 +21,7 @@ export default function Collection() {
   const { currentUser, equippedLook, ownedIds } = useAuth(),
     progress = useProgress(),
     owned = new Set(ownedIds);
+  const isAdmin = currentUser?.is_admin === true;
   const [selected, setSelected] = useState<Collectible | null>(null),
     [activeShelf, setActiveShelf] = useState<"all" | CollectibleKind>("all"),
     [busy, setBusy] = useState(false),
@@ -49,20 +50,20 @@ export default function Collection() {
         <div>
           <h1 className="text-2xl font-bold text-cocoa">Aparador</h1>
           <p className="text-sm text-ink-muted mt-1">
-            Save with purpose. Enjoy what you earn.
+            {isAdmin ? 'Explore every collectible in the curriculum.' : 'Save with purpose. Enjoy what you earn.'}
           </p>
-          <p className="text-sm font-semibold text-cocoa mt-2">
+          {isAdmin ? <p className="text-sm font-semibold text-cocoa mt-2">Admin preview · All {COLLECTIBLES.length} collectibles</p> : <p className="text-sm font-semibold text-cocoa mt-2">
             <Coins size={16} className="inline" /> Wallet:{" "}
             {currentUser?.coins ?? 0} coins · {owned.size}/{COLLECTIBLES.length}{" "}
             owned
-          </p>
+          </p>}
         </div>
         <HestiaMascot height={76} />
       </header>
-      <p className="heritage-summary">
+      {!isAdmin && <p className="heritage-summary">
         {rank.name} · {rank.worth} Heritage Net Worth · {progress.restTokens}{" "}
         Pahinga shields
-      </p>
+      </p>}
       <div className="shelf-tabs" aria-label="Collection shelves">
         <button
           aria-pressed={activeShelf === "all"}
@@ -120,7 +121,7 @@ export default function Collection() {
                       setNotice("");
                     }}
                     className={`curio ${owned.has(item.id) ? "curio-owned" : "curio-locked"}`}
-                    aria-label={`${item.nameEnglish}, ${item.financialRole}, ${item.price} coins, ${owned.has(item.id) ? "owned" : "available to buy"}`}
+                    aria-label={isAdmin ? `${item.nameEnglish}, ${item.financialRole}, admin preview` : `${item.nameEnglish}, ${item.financialRole}, ${item.price} coins, ${owned.has(item.id) ? "owned" : "available to buy"}`}
                   >
                     <span className="curio-visual">
                       <CollectibleArt item={item} />
@@ -138,7 +139,7 @@ export default function Collection() {
                     <span className="curio-label">
                       <strong>{item.nameFilipino}</strong>
                       <span>
-                        {owned.has(item.id) ? "Owned" : `${item.price} coins`} ·{" "}
+                        {isAdmin ? "Preview" : owned.has(item.id) ? "Owned" : `${item.price} coins`} ·{" "}
                         {item.financialRole}
                       </span>
                     </span>
@@ -152,7 +153,7 @@ export default function Collection() {
         <div className="aparador-base" aria-hidden="true" />
       </div>
       <p className="text-center text-xs text-ink-muted mt-4">
-        Choose a treasure to read its story, pin a goal, or buy.
+        {isAdmin ? 'Choose any treasure to read its story or preview a wearable look.' : 'Choose a treasure to read its story, pin a goal, or buy.'}
       </p>
       {selected && (
         <Modal
@@ -172,7 +173,7 @@ export default function Collection() {
             </button>
             <CollectibleArt item={selected} className="detail-art" />
             <p className="text-xs text-cocoa">
-              {selected.rarity} · {selected.price} coins
+              {selected.rarity}{!isAdmin && <> · {selected.price} coins</>}
             </p>
             <h2 className="text-xl font-bold mt-2">{selected.nameEnglish}</h2>
             <p lang="fil" className="text-sm text-cocoa">
@@ -194,11 +195,11 @@ export default function Collection() {
                   ? "A cultural treat to enjoy in your cabinet."
                   : ROLE_INFO[selected.financialRole].perk}
               </strong>
-              {selected.financialRole === "Reserve" && (
+              {!isAdmin && selected.financialRole === "Reserve" && (
                 <small>Shields protect missed days · hold up to 3.</small>
               )}
             </div>
-            {!owned.has(selected.id) && (
+            {!isAdmin && !owned.has(selected.id) && (
               <div className="shop-actions">
                 <button
                   disabled={busy || (currentUser?.coins ?? 0) < selected.price}
@@ -264,7 +265,7 @@ export default function Collection() {
               </button>
             )}
             {owned.has(selected.id) && !selected.wearable && (
-              <p className="text-sm font-bold">In your collection</p>
+              <p className="text-sm font-bold">{isAdmin ? "Available for preview" : "In your collection"}</p>
             )}
             {error && (
               <p role="alert" className="text-sm text-red-800 mt-3">

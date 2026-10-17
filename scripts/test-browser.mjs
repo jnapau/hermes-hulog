@@ -272,6 +272,16 @@ try {
     await ctx.close();
     const a = await session(viewport, true);
     const adminBefore=structuredClone(a.getProfile());
+    await a.page.goto('http://127.0.0.1:5173/');
+    await a.page.getByRole('link',{name:'Practice any day · Days 1–365'}).waitFor();
+    assert.equal(await a.page.locator('.player-stats,.weekly-tracker,.savings-goal,.goal-link').count(),0,'admin home hides personal economy');
+    assert.equal(await a.page.getByRole('button',{name:/Open Alkansya/}).count(),0);
+    await a.page.screenshot({path:out+'/'+label+'-admin-home.png',fullPage:true});
+    await a.page.goto('http://127.0.0.1:5173/koleksyon');
+    await a.page.getByText('Admin preview · All 58 collectibles',{exact:true}).waitFor();
+    assert.equal(await a.page.getByText(/Wallet:|Pahinga shields/).count(),0);
+    assert.equal(await a.page.locator('.curio-locked').count(),0);
+    await a.page.screenshot({path:out+'/'+label+'-admin-collection.png',fullPage:true});
     await a.page.goto('http://127.0.0.1:5173/play');
     await a.page.getByLabel('Practice day',{exact:true}).selectOption('365');
     await a.page.getByRole('heading',{name:seed.questions.find(q=>q.sequence_day===365&&q.slot===1).payload.prompt,exact:true}).waitFor();
@@ -282,6 +292,7 @@ try {
       await a.page.getByRole('button',{name:slot<3?'Next Card →':'Save drop & view results →',exact:true}).click();
     }
     await a.page.getByRole('heading',{name:'Practice complete · 3/3 correct',exact:true}).waitFor();
+    assert.equal(await a.page.getByText(/coin|streak/i).count(),0,'admin completion has no personal rewards');
     await a.page.getByRole('button',{name:'Play Again',exact:true}).click();
     await a.page.getByRole('heading',{name:seed.questions.find(q=>q.sequence_day===365&&q.slot===1).payload.prompt,exact:true}).waitFor();
     await a.page.screenshot({path:out+'/'+label+'-admin-practice.png',fullPage:true});

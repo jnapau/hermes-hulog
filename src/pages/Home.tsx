@@ -34,7 +34,7 @@ export default function Home() {
   const week = Array.from({ length: 7 }, (_, i) =>
       addDays(weekStart(today), i),
     ),
-    ready = canBasag(progress, today);
+    ready = !isAdmin && canBasag(progress, today);
   const goal = progress.targetGoal
     ? COLLECTIBLE_BY_ID[progress.targetGoal]
     : null;
@@ -62,7 +62,7 @@ export default function Home() {
         </h1>
         <div className="sanctuary-scene">
           <Alkansya
-            fillPercentage={Math.min(100, (progress.alkansyaCoins / 63) * 100)}
+            fillPercentage={isAdmin ? 0 : Math.min(100, (progress.alkansyaCoins / 63) * 100)}
           />
           <HestiaMascot pose={played ? "done" : "idle"} height={112} />
         </div>
@@ -84,6 +84,7 @@ export default function Home() {
             <span>{isAdmin ? 'Practice any day · Days 1–365' : `Day ${activeSequenceDay(today, progress.plays)} · Today’s daily drop`}</span>
           </Link>
         )}
+        {!isAdmin && <>
         <dl className="player-stats">
           <div>
             <dt>Alkansya</dt>
@@ -139,6 +140,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+        </>}
         {ready && (
           <button
             disabled={claiming}
@@ -169,7 +171,7 @@ export default function Home() {
           </p>
         )}
       </div>
-      {reward && (
+      {!isAdmin && reward && (
         <Modal onClose={() => setReward(null)} label="Sunday coin payout">
           <div className="collection-detail">
             <button

@@ -168,6 +168,12 @@ await db.query("delete from auth.users where id=$1", [
   "55555555-5555-4555-8555-555555555555",
 ]);
 await db.query("update profiles set is_admin=true where id=$1", [admin]);
+await db.query("update profiles set coins=999,streak=99,progress=progress || '{\"alkansyaCoins\":99,\"ginto\":99,\"bestStreak\":99,\"restTokens\":3,\"cashouts\":{\"legacy\":{\"total\":99}}}'::jsonb where id=$1",[admin]);
+const normalizedAdmin=(await db.query('select coins,streak,progress from profiles where id=$1',[admin])).rows[0];
+assert.equal(normalizedAdmin.coins,0,'admin wallet is always zero');
+assert.equal(normalizedAdmin.streak,0,'admin streak is always zero');
+for(const key of ['alkansyaCoins','ginto','bestStreak','restTokens'])assert.equal(normalizedAdmin.progress[key],0,key);
+assert.deepEqual(normalizedAdmin.progress.cashouts,{});
 assert.equal(
   (await db.query("select * from user_collections where user_id=$1", [admin]))
     .rows.length,
@@ -393,6 +399,10 @@ assert.equal(
   undefined,
   "admin daily play is never locked out",
 );
+await rejected(()=>db.query('select open_alkansya()'),/Administrator practice does not earn payouts/);
+const afterPractice=(await db.query('select coins,streak,progress from profiles where id=$1',[admin])).rows[0];
+assert.equal(afterPractice.coins,0);assert.equal(afterPractice.streak,0);
+assert.equal(afterPractice.progress.alkansyaCoins,0);assert.equal(afterPractice.progress.bestStreak,0);
 await db.query("select set_admin($1,true)", [other]);
 await db.query("select set_admin($1,true)", [other]);
 assert.equal(

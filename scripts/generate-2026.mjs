@@ -1,5 +1,5 @@
 import { writeFileSync } from "node:fs";
-import { units, households } from "./curriculum-2026.mjs";
+import { units } from "./curriculum-2026.mjs";
 import { cyberMessages } from "./cyber-messages.mjs";
 const courses = [101, 102, 103, 103, 104, 104, 105, 105, 106, 107, 108, 108];
 const tiers = [
@@ -18,11 +18,11 @@ const tiers = [
 ];
 const questions = [];
 const lower = (s) => s[0].toLowerCase() + s.slice(1);
-function choices(good, bad, rotation) {
+function choices(good, bad, other, rotation) {
   const values = [
     good,
     bad,
-    ["Wait for extra income", "Hintayin ang dagdag-kita"],
+    other,
   ];
   const rotated = values.map((_, i) => values[(i + rotation) % 3]);
   return {
@@ -38,7 +38,6 @@ for (let day = 0; day < 365; day++) {
   const stage = Math.min(11, Math.floor((day * 12) / 365));
   for (let s = 0; s < 3; s++) {
     const unit = units[stage * 10 + ((day * 3 + s) % 10)],
-      home = households[(day + s * 11 + stage * 7) % households.length],
       positive = day % 2 === 0;
     const q = {
       id: `H-D${String(day + 1).padStart(3, '0')}-${s + 1}`,
@@ -55,15 +54,15 @@ for (let day = 0; day < 365; day++) {
       format: s === 0 ? "Tama o Mali?" : "Ano'ng Gagawin Mo?",
       prompt:
         s === 0
-          ? `${home.scene}. ${positive ? unit.claim : `You should ${lower(unit.bad)}`}.`
-          : `${home.scene}. ${s === 1 ? "Choose wisely" : "Protect tomorrow"}: ${lower(unit.bad)}?`,
+          ? (positive ? unit.claim : unit.falseClaim)
+          : `${unit.scenario} ${s === 1 ? "What is the best move?" : "What should you prioritize first?"}`,
       promptFilipino:
         s === 0
-          ? `${home.sceneFilipino}. ${positive ? unit.claimFilipino : `Dapat ${lower(unit.badFilipino)}`}.`
-          : `${home.sceneFilipino}. ${s === 1 ? "Piliin ang tama" : "Ingatan ang bukas"}: ${lower(unit.badFilipino)}?`,
+          ? (positive ? `${unit.claimFilipino}.` : unit.falseClaimFilipino)
+          : `${unit.scenarioFilipino} ${s === 1 ? "Ano ang pinakamagandang gawin?" : "Ano ang dapat unahin?"}`,
       why: `${unit.reason}. Rule of thumb: ${unit.good}.`,
-      whyFilipino: `${unit.claimFilipino}. Tip ng Araw: ${unit.goodFilipino}.`,
-      hakbang: `Isulat ang iyong plano: ${lower(unit.goodFilipino)}.`,
+      whyFilipino: `${unit.reasonFilipino} Tip ng Araw: ${unit.goodFilipino}.`,
+      hakbang: `${unit.action}.`,
       hakbangEnglish: `Write your next step: ${lower(unit.good)}.`,
     };
     if (s === 0)
@@ -77,12 +76,13 @@ for (let day = 0; day < 365; day++) {
         choices(
           [unit.good, unit.goodFilipino],
           [unit.bad, unit.badFilipino],
+          [unit.other, unit.otherFilipino],
           (day + s) % 3,
         ),
         { answerLabel: unit.good },
       );
     if (s === 0 && day % 4 === 0 && !q.paydaySpecial) {
-      const [en, fil, answer, reason, reasonFil] =
+      const [en, fil, answer, reason, reasonFil, action, actionFil] =
         cyberMessages[Math.floor(day / 4) % cyberMessages.length];
       Object.assign(q, {
         format: "Scam o Legit?",
@@ -95,23 +95,27 @@ for (let day = 0; day < 365; day++) {
             : "Legit — verify the details",
         why: `${reason} Rule of thumb: verify through your own official channel.`,
         whyFilipino: `${reasonFil} Tip ng Araw: Ikaw mismo ang magbukas ng opisyal na channel.`,
+        hakbangEnglish: action,
+        hakbang: actionFil,
       });
     }
     if (q.paydaySpecial) {
       const cash = 9000 + stage * 500,
         bills = 5000 + stage * 200,
-        reserve = 1000;
+        reserve = 1000 + stage * 100;
       if (s === 0)
         Object.assign(q, {
           prompt:
-            "Payday sale! Spend your whole salary before setting aside bills?",
+            "Spending your whole salary on a payday sale leaves nothing for your household bills.",
           promptFilipino:
-            "Payday sale! Ubusin ang sweldo bago magtabi para sa bayarin?",
-          answer: "MALI",
-          answerLabel: "False",
+            "Walang matitira sa bayarin kapag inubos ang sweldo sa payday sale.",
+          answer: "TAMA",
+          answerLabel: "True",
           why: "Bills still fall due after a sale. Rule of thumb: set aside essentials before shopping.",
           whyFilipino:
             "May bayarin pa pagkatapos ng sale. Tip ng Araw: Itabi muna ang para sa kailangan.",
+          hakbangEnglish: "List the bills your next salary must cover before browsing sales.",
+          hakbang: "Ilista muna ang bayaring sasagutin ng susunod na sweldo bago tumingin sa sale.",
         });
       if (s === 1)
         Object.assign(q, {
@@ -120,11 +124,30 @@ for (let day = 0; day < 365; day++) {
           ...choices(
             [`₱${cash - bills - reserve}`, `₱${cash - bills - reserve}`],
             [`₱${cash - bills}`, `₱${cash - bills}`],
+            [`₱${cash - reserve}`, `₱${cash - reserve}`],
             day % 3,
           ),
           answerLabel: `₱${cash - bills - reserve}`,
           why: `₱${cash} − ₱${bills} − ₱${reserve} = ₱${cash - bills - reserve}. Rule of thumb: reserved savings are already assigned.`,
           whyFilipino: `₱${cash} − ₱${bills} − ₱${reserve} = ₱${cash - bills - reserve}. Tip ng Araw: May gamit na ang nakalaang ipon.`,
+          hakbangEnglish: "Subtract bills and planned savings from your next take-home pay.",
+          hakbang: "Ibawas ang bayarin at planadong ipon sa susunod mong netong sweldo.",
+        });
+      if (s === 2)
+        Object.assign(q, {
+          prompt: "Your payday budget already reserves bills and savings, but a sale tempts you. What should you prioritize first?",
+          promptFilipino: "Nakalaan na ang pambayad at ipon sa sweldo, pero nakakatukso ang sale. Ano ang dapat unahin?",
+          ...choices(
+            ["Keep bills and savings protected", "Panatilihing nakatabi ang pambayad at ipon"],
+            ["Spend the bill money on shopping", "Ipamili ang perang para sa bayarin"],
+            ["Use savings for an unplanned treat", "Gamitin ang ipon sa biglaang luho"],
+            day % 3,
+          ),
+          answerLabel: "Keep bills and savings protected",
+          why: "Only the unassigned remainder is available for optional spending. Rule of thumb: a sale does not cancel your commitments.",
+          whyFilipino: "Ang hindi nakalaang natira lang ang puwedeng gastusin sa luho. Tip ng Araw: Hindi nawawala ang obligasyon dahil may sale.",
+          hakbangEnglish: "Separate your bill money and savings before choosing any payday treat.",
+          hakbang: "Ihiwalay muna ang pambayad at ipon bago pumili ng payday treat.",
         });
     }
     questions.push(q);
@@ -139,7 +162,7 @@ if (
   throw Error("Incomplete curriculum");
 for (const q of questions) {
   if (
-    q.prompt.split(/\s+/).length > 24 ||
+    q.prompt.split(/\s+/).length > 20 || q.prompt.split(/\s+/).length < 10 ||
     q.promptFilipino.split(/\s+/).length > 32
   )
     throw Error(`Long prompt: ${q.id}`);
