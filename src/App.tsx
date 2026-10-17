@@ -21,7 +21,7 @@ export default function App() {
     <Suspense fallback={<p role="status" className="p-8">Loading…</p>}><Routes>
       <Route element={<PlayerLayout />}>
         <Route path="/" element={<Home />} />
-        <Route path="/koleksyon" element={currentUser ? <Collection /> : <Navigate to="/" replace />} />
+        <Route path="/koleksyon" element={loading ? <p className="p-8" role="status">Loading your collection…</p> : currentUser ? <Collection /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="/play" element={loading ? <p className="p-8">Loading your progress…</p> : currentUser ? <Play key={`${currentUser.id}:${getAllQuestions().length > 0}`}/> : <Navigate to="/" replace />} />
       <Route path="/admin" element={<AdminLayout />}>

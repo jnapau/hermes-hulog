@@ -30,10 +30,15 @@ try {
     assert.equal(check(await player.rpc('submit_answer',{p_question:card.id,p_choice:choice})),true);
     assert.equal(check(await player.rpc('submit_answer',{p_question:card.id,p_choice:choice})),true);
   }
-  assert.equal(check(await player.from('profiles').select('coins').single()).coins,3,'replayed answers do not award extra coins');
+  assert.equal(check(await player.from('profiles').select('coins').single()).coins,0,'daily earnings stay banked');
+  assert.equal(check(await player.from('profiles').select('progress').single()).progress.alkansyaCoins,3,'replayed answers do not award extra coins');
   const progress=check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{results:[false,false,false],barya:999}},ginto:999}}));
   assert.equal(progress.plays[date].barya,3);
   assert.equal(progress.ginto,0);
+  assert.equal(progress.alkansyaCoins,4,'perfect bonus is banked once');
+  check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
+  check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
+  assert.equal(check(await player.from('profiles').select('progress').single()).progress.alkansyaCoins,9,'action is banked once');
   const returning=client(publicKey);
   check(await returning.auth.signInWithPassword({email:`${name}@players.hulog.internal`,password}));
   assert.equal(check(await returning.from('profiles').select('*').single()).progress.plays[date].barya,3,'progress restores in a fresh session');

@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
+    "test:art": "node scripts/test-artwork.mjs",
     "test:db": "node scripts/build-seed.mjs && node scripts/test-database.mjs",
     "seed": "node scripts/seed.mjs",
     "setup:admin": "node scripts/setup-admin.mjs"

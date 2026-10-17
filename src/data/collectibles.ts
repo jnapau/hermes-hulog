@@ -1,7 +1,7 @@
 /**
  * Philippine Cultural Heritage Collection & Hestia Wearable Attire.
  *
- * Six comprehensive exhibition tiers:
+ * Seven curated shelves with server-priced financial roles:
  * 1. Philippine Money (Salapi ng Pilipinas)
  * 2. National Symbols (Pambansang Sagisag at Bagay sa Pilipinas)
  * 3. Ancient Artifacts & Pottery (Sinaunang Kagamitan sa Pilipinas)
@@ -15,10 +15,13 @@ export type CollectibleKind =
   | 'national-symbols'
   | 'ancient-things'
   | 'farm-life'
+  | 'merienda'
   | 'national-costumes'
   | 'aswang-monsters';
 
 export interface Collectible {
+  price: number;
+  financialRole: 'Asset' | 'Reserve' | 'Want';
   id: string;
   kind: CollectibleKind;
   /** Authentic Filipino name of the item */
@@ -59,15 +62,15 @@ export const SHELF_CATEGORIES: ShelfCategory[] = [
   {
     id: 'national-symbols',
     titleEnglish: 'Philippine National Symbols & Treasures',
-    titleFilipino: 'Pambansang mga Bagay sa Pilipinas',
+    titleFilipino: 'Pambansang Sagisag',
     description: 'Official national symbols and cultural treasures that define Filipino pride and natural wealth.',
     icon: '🇵🇭',
     woodTone: 'from-[#3B1E08] to-[#5F3011]',
   },
   {
     id: 'farm-life',
-    titleEnglish: 'Philippine Farm & Rural Life',
-    titleFilipino: 'Karaniwang Makikita sa Bukid',
+    titleEnglish: 'Productive Farm & Livelihood Assets',
+    titleFilipino: 'Kabuhayan at Bukid',
     description: 'Tools and implements that sustained generations of hardworking Filipino farmers in the countryside.',
     icon: '🌾',
     woodTone: 'from-[#361904] to-[#602D0A]',
@@ -75,7 +78,7 @@ export const SHELF_CATEGORIES: ShelfCategory[] = [
   {
     id: 'national-costumes',
     titleEnglish: "Hestia's National Costumes",
-    titleFilipino: 'Pambansang Damit na Masusuot ni Hestia',
+    titleFilipino: 'Pambansang Kasuotan ni Hestia',
     description: 'Authentic traditional attire from Luzon, Visayas, and Mindanao that Hestia can wear on her daily journey.',
     icon: '👘',
     woodTone: 'from-[#5C2B09] to-[#854D0E]',
@@ -84,7 +87,7 @@ export const SHELF_CATEGORIES: ShelfCategory[] = [
   {
     id: 'aswang-monsters',
     titleEnglish: "Philippine Aswang & Mythical Looks",
-    titleFilipino: 'Mga Aswang at Nilalang (New Look ni Hestia)',
+    titleFilipino: 'Mistikong Anyo ni Hestia',
     description: 'Legendary creatures and mythological beings from Philippine folklore transformed into unique wearable avatars.',
     icon: '👹',
     woodTone: 'from-[#2A1005] to-[#451B08]',
@@ -92,7 +95,7 @@ export const SHELF_CATEGORIES: ShelfCategory[] = [
   },
 ];
 
-const ALL_COLLECTIBLES: Collectible[] = [
+const ALL_COLLECTIBLES: Omit<Collectible, 'price' | 'financialRole'>[] = [
   // ── 1. PHILIPPINE MONEY ──
   {
     id: 'salapi-piloncitos',
@@ -106,7 +109,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The earliest recognized indigenous coinage of the Philippines, dating back to 900–1200 CE. Stamped with the pre-colonial Baybayin character "Ma" (symbolizing the Kingdom of Ma-i), these pure gold beads proved flourishing pre-colonial maritime trade.',
     blurb: 'Pre-colonial pure gold currency engraved with ancient Baybayin calligraphy.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-1-piso-1903',
@@ -120,7 +123,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Minted under the Philippine Coinage Act of 1903. Depicts a Filipina artisan wielding a hammer upon an anvil with Mayon Volcano erupting in the background, immortalizing industrious labor and resilience.',
     blurb: 'Historical silver peso featuring Mayon Volcano and the blacksmith artisan at the anvil.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-emergency-notes-1942',
@@ -134,7 +137,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'During World War II, provinces and resistance guerilla councils printed their own emergency currency to keep local barter and family economies alive during enemy occupation.',
     blurb: 'Authentic WWII emergency currency issued by guerilla resistance units.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-cbp-english-1949',
@@ -148,7 +151,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Issued right after the establishment of the Central Bank of the Philippines in 1949, marking the foundation of national monetary autonomy and organized fiscal protection.',
     blurb: 'The foundational series from the newly established Central Bank in 1949.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-pilipino-1969',
@@ -162,7 +165,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The landmark banknote series where the Filipino national language was officially used across all denominations, proudly declaring "Republika ng Pilipinas".',
     blurb: 'The first banknote series written entirely in the national Filipino language.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-bagong-lipunan-1973',
@@ -176,7 +179,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A widely recognized 1970s series showcasing Philippine historical heroes: Jose Rizal, Andres Bonifacio, and Apolinario Mabini.',
     blurb: 'Classic series honoring Philippine founding patriots and national heroes.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-ngc-2010',
@@ -190,7 +193,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Celebrates natural wonders like Tubbataha Reef, the Banaue Rice Terraces, the Chocolate Hills, and endemic fauna like the Tarsier and Whale Shark.',
     blurb: 'Modern BSP banknote series celebrating UNESCO world heritage sites.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'salapi-polymer-2022',
@@ -204,7 +207,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Winner of the prestigious International Bank Note Society "Banknote of the Year 2022". Highlights the critically endangered Philippine Eagle and Sampaguita flower on durable polymer.',
     blurb: 'Award-winning polymer banknote honoring the Philippine Eagle.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
 
   // ── 2. NATIONAL SYMBOLS & TREASURES ──
@@ -220,7 +223,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Proclaimed the National Flower of the Philippines in 1934. Its delicate white petals symbolize purity, simplicity, fidelity, and the cherished Filipino promise of "Sumpa kita" (I promise you).',
     blurb: 'Sweetly fragrant national blossom representing purity and devotion.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-narra',
@@ -234,7 +237,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The National Tree of the Philippines. Renowned for supreme durability and resistance to termites and rot, it represents the steadfast resilience of the Filipino family in overcoming any hardship.',
     blurb: 'Mighty indigenous hardwood embodying unwavering household fortitude.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-agila',
@@ -248,7 +251,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'One of the largest, rarest, and most powerful eagles on the planet. Symbol of courage, noble vision, and the pinnacle of biodiversity in Philippine tropical rainforests.',
     blurb: 'Critically protected apex sovereign of Philippine skies.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-anahaw',
@@ -262,7 +265,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The national leaf, famed for its broad fan shape. Woven into traditional hand fans (paypay), rain capes, and resilient thatched roofs, representing resourcefulness in everyday rural living.',
     blurb: 'Large pleated fan palm leaf widely used for shade, craft, and roofing.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-arnis',
@@ -276,7 +279,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Declared the National Martial Art and Sport of the Philippines under Republic Act 9850. Utilizes swift strikes and deflections with seasoned rattan sticks, honoring warrior self-defense traditions.',
     blurb: 'Traditional rattan martial arts sticks of indigenous defense.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-kalabaw',
@@ -290,7 +293,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The ultimate partner of the Filipino farmer. Patient, tireless, and loyal, the carabao epitomizes honest work, agricultural heritage, and perseverance across Philippine history.',
     blurb: 'Revered national draft animal symbolizing patient and honest toil.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-mangga',
@@ -304,7 +307,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Guinness World Record holder for the sweetest fruit in the world. The golden carabao mango reflects tropical abundance, sunshine, and warm hospitality.',
     blurb: 'World-famous sweet golden mango of Guimaras and Zambales.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'sagisag-bahay-kubo',
@@ -318,7 +321,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The architectural icon of Bayanihan—the community spirit of carrying a neighbor’s house together on their shoulders. Built with sustainable bamboo and thatch for tropical cross-ventilation.',
     blurb: 'Icon of community solidarity and sustainable vernacular architecture.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
 
   // ── 3. ANCIENT ARTIFACTS & POTTERY ──
@@ -334,7 +337,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The original Filipino coin bank. Carved from thick mountain bamboo nodes with a single slit on top. Once a coin drops inside, it cannot be shaken out until the day the bamboo is ceremonially split.',
     blurb: 'Hand-carved Cordillera mountain bamboo bank—the original Filipino Alkansya.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-palayok',
@@ -348,7 +351,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Earthenware shaped by hand in Albay using volcanic red clay. In ancient traditions, emergency savings were sealed inside these clay pots; retrieving the coins required shattering the pot, deterring frivolous spending.',
     blurb: 'Authentic clay pottery that must be broken open to claim savings.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-manunggul-jar',
@@ -362,7 +365,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Unearthed in the Tabon Caves of Palawan, this national cultural treasure depicts two souls paddling a canoe into the afterlife. Celebrated worldwide for its profound maritime spirituality and sculptural mastery.',
     blurb: 'World-renowned Neolithic burial vessel depicting the soul’s voyage across the sea.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-maitum-pottery',
@@ -376,7 +379,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Discovered in Ayub Cave in Sarangani, these pre-colonial terracotta vessels feature realistic facial expressions, ears, and piercings—unique in Southeast Asian archaeology.',
     blurb: 'Intricate pre-historic face-shaped terracotta jars from ancient Mindanao.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-gintong-tara',
@@ -390,7 +393,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A four-pound solid 21-karat gold Buddhist-Hindu icon discovered in 1917 along the Wawa River in Agusan del Sur, proving sophisticated metallurgy and ancient trading networks.',
     blurb: 'Masterpiece 21-karat solid cast gold goddess sculpture of ancient Caraga.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-balangay',
@@ -404,7 +407,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The earliest watercraft found in the Philippines. Built without a single metal nail—only wooden pegs and fiber lashings. The word "Barangay" was derived from these community sea-vessels.',
     blurb: 'Ancient edge-pegged plank boat that gave birth to the term "Barangay".',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-lantaka',
@@ -418,7 +421,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Muzzle-loading bronze swivel guns mounted on merchant balangays and fortresses across the Sulu and Maguindanao Sultanates to defend against coastal invaders.',
     blurb: 'Ornately cast pre-colonial bronze artillery of maritime kingdoms.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'antigo-sungka',
@@ -432,7 +435,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A traditional Philippine mancala board game. Players distribute sigay (cowrie shells) across pits, practicing mathematical discipline, foresight, and prudent resource calculation.',
     blurb: 'Carved wooden mathematical strategy game of shell redistribution.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
 
   // ── 4. PHILIPPINE FARM & RURAL LIFE ──
@@ -448,7 +451,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The iconic wooden plow used across Central Luzon and the Visayas. Hitched to the carabao’s neck yoke, it breaks muddy paddy soils before planting seasonal palay.',
     blurb: 'Traditional rice-paddy plow representing the backbone of farming.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-bilao',
@@ -462,7 +465,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Round, flat woven bamboo trays used by farming families to winnow rice grain from chaff in the breeze, and to serve festive kakanin and pancit during barangay fiestas.',
     blurb: 'Multi-purpose bamboo tray for winnowing grain and festive dining.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-itak',
@@ -476,7 +479,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The indispensable companion in the field. From clearing forest weeds and chopping bamboo to opening young coconuts for refreshing buko juice under the midday heat.',
     blurb: 'Hand-forged carbon steel machete worn daily by Filipino farmers.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-karit',
@@ -490,7 +493,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Serrated curved blade gripped during golden harvest days. Farmers work in unison across the paddies to reap bundles of ripe palay under the October sun.',
     blurb: 'Curved harvesting blade for reaping golden rice fields.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-dulos',
@@ -504,7 +507,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A compact pointed iron blade used for delicate garden soil loosening, weeding vegetable patches, and transplanting seedlings into backyard plots.',
     blurb: 'Handheld digging tool essential for backyard vegetable gardens.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-kabyawan',
@@ -518,7 +521,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Found across Negros and Panay sugar haciendas. Turned by a walking carabao, the heavy wooden rollers crush sweet sugarcane stalks into rich brown muscovado juice.',
     blurb: 'Historic wooden roller mill for pressing fresh sugarcane juice.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-bangko',
@@ -532,7 +535,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Resting beneath the broad shade of a mango tree, this simple bench offers weary farmers a place to take a midday nap and share coffee after dawn plowing.',
     blurb: 'Sturdy wooden bench for well-earned midday farm siestas.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
   {
     id: 'farm-bayong',
@@ -546,7 +549,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The traditional eco-friendly market bag carried by mothers and farmers to the town palengke to bring home fresh vegetables, dried fish, and morning pan de sal.',
     blurb: 'Sturdy handwoven palm tote for farm harvest and market errands.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
   },
 
   // ── 5. HESTIA'S WEARABLE NATIONAL COSTUMES ──
@@ -562,7 +565,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The quintessential national costume of Filipino women, consisting of an airy baro blouse, a panuelo kerchief, and a sweeping saya skirt. Wearable by Hestia as an emblem of grace and elegance.',
     blurb: 'Exquisite pineapple-fiber formal dress wearable by Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -578,7 +581,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The formal national garment of the Philippines. Tailored with meticulous open-work embroidery (calado) from Lumban, Laguna. Hestia wears this dignified look during proud milestone celebrations.',
     blurb: 'Dignified hand-embroidered national attire wearable by Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -594,7 +597,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Featuring high, architecturally sculpted butterfly sleeves that symbolize the regal pride and modernization of Philippine couture.',
     blurb: 'Iconic butterfly-sleeve national dress wearable by Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -610,7 +613,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       "Woven by master Dreamweavers of Lake Sebu who receive geometric tapestry patterns in their dreams from the spirit Fu Dalu. Accented with tinkling brass hawk bells and colorful beaded headdresses.",
     blurb: "Sacred T'nalak regalia with jingling brass bells for Hestia.",
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -626,7 +629,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A luminous handwoven textile from Maguindanao. The vibrant colors and chevron patterns reflect royalty, bravery, and ancestral pride of the Bangsamoro people.',
     blurb: 'Majestic handwoven royal silk brocade wearable by Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -642,7 +645,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Hailing from the island of Basilan, Yakan weaving is celebrated for staggering mathematical precision in complex diamond and zigzag weaves that take months to complete.',
     blurb: 'Vibrant kaleidoscope geometric woven garments from Basilan.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -658,7 +661,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Lighthearted festive attire worn during folk celebrations like Tinikling and Subli, paired with a sun-shielding woven salakot hat.',
     blurb: 'Breezy traditional festive outfit with farmer salakot hat.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -674,7 +677,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'Hand-loomed along the misty Cordillera ridges of Kalinga. Dominated by fiery red and indigo stripes representing courage, mountain rivers, and ancestral protection.',
     blurb: 'Highland backstrap-loomed warrior attire wearable by Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'costume',
   },
@@ -692,7 +695,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The tall, equine forest protector of Philippine folklore. Legend says that anyone who can pluck the golden needle spine from its mane gains its lifelong loyalty and guidance through unfamiliar paths.',
     blurb: "Noble equine guardian skin giving Hestia a powerful mythical stance.",
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -708,7 +711,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The most famous creature of Philippine lore, transformed into a heroic nocturnal sky traveler with large leathery bat wings that glide above moonlit rooftops and protect against financial traps.',
     blurb: 'Dramatic midnight bat wings transforming Hestia into a night guardian.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -724,7 +727,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The gentle giant who resides high in century-old Balete trees, quietly observing passersby while puffing a giant cigar. Grants deep stillness, patience, and long-term asset accumulation wisdom.',
     blurb: 'Giant tree-dwelling look with mossy aura and peaceful composure.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -740,7 +743,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The colossal serpentine sea dragon of ancient Visayan cosmology who swallowed the seven moons in the sky, creating eclipses until villagers banged their drums to save the light.',
     blurb: 'Breathtaking serpentine sea dragon avatar crowned with celestial moons.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -756,7 +759,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The mythical sea maiden who guards the secret treasures and pearl beds of the Philippine deep sea, guiding lost fishermen safely past treacherous storms.',
     blurb: 'Shimmering underwater pearl guardian look for Hestia.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -772,7 +775,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The benevolent mountain guardian goddess who shields the flora, fauna, and generous villagers of Laguna. She reminds all families to care for nature and preserve their emergency cushions.',
     blurb: 'Enchanting floral and morning-mist forest goddess look.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -788,7 +791,7 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'The ancient dwarf elder who lives inside earth mounds (punso). Revered with the respectful greeting "Tabi-tabi po", teaching travelers to walk respectfully and budget with prudence.',
     blurb: 'Wise little earth spirit look with miniature staff and beard.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
@@ -804,17 +807,31 @@ const ALL_COLLECTIBLES: Collectible[] = [
     culturalStory:
       'A mischievous trickster of the woods who tests whether travelers can discern reality from illusion—just like spotting deceptive online financial scams and phishing lures!',
     blurb: 'Cheeky mythical imp look equipped with scam-detecting vision.',
-    unlockRequirement: 'Complete your daily drop on Sunday, then open the weekly reward.',
+    unlockRequirement: 'Buy with Wallet coins collected from your Alkansya.',
     wearable: true,
     lookType: 'aswang',
   },
 ];
 
-const extras: Collectible[] = [
- ['farm-kalabaw','farm-life','Kalabaw','Water buffalo','🐃'],['farm-palay','farm-life','Palay','Rice plant','🌾'],['farm-mangga','farm-life','Mangga','Mango','🥭'],['farm-tubo','farm-life','Tubo','Sugar cane','🌱'],['farm-buko','farm-life','Buko','Young coconut','🥥'],['symbol-jeepney','national-symbols','Jeepney','Filipino jeepney','🚌'],['money-spanish-peso','ph-money','Pisong Pilak','Spanish-Filipino peso','🪙'],['damit-katipunero','national-costumes','Katipunero','Bandana and camisa de chino','👕']
-].map(([id,kind,nameFilipino,nameEnglish,emoji]) => ({id,kind:kind as CollectibleKind,nameFilipino,nameEnglish,emoji,shelfTier:'Heritage collection',material:'Digital collectible',rarity:'Rare',culturalStory: nameEnglish+' is part of the Philippine cultural collection. Build your daily learning habit to discover it.',blurb:nameEnglish,unlockRequirement:'Complete a daily drop on Sunday, then open your weekly reward.',wearable:kind==='national-costumes',lookType:kind==='national-costumes'?'costume':undefined}));
-export const COLLECTIBLES = [...ALL_COLLECTIBLES.filter(c => c.kind !== 'ancient-things'), ...extras];
-
-export const COLLECTIBLE_BY_ID: Record<string, Collectible> = Object.fromEntries(
-  COLLECTIBLES.map((c) => [c.id, c]),
-);
+const additions: Omit<Collectible, 'price' | 'financialRole'>[] = [
+ ['antigo-laguna-copperplate','ancient-things','Kasulatang Tanso ng Laguna','Laguna Copperplate Inscription','Epic','A tenth-century copper document records the release of a debt, an early example of why written obligations matter.'],
+ ['farm-basnig','farm-life','Lambat na Basnig','Basnig Fishing Net','Rare','Lift-net fishing supports coastal livelihoods. A cared-for tool can support many working days.'],
+ ['farm-habihan','farm-life','Habihan','Handloom','Epic','Handlooms turn thread into valuable textiles while sustaining weaving skills and livelihoods.'],
+ ['damit-katipunero','national-costumes','Kasuotang Katipunero','Katipunero Headband and Camisa','Common','A red headband and simple camisa recall the resolve of the Philippine revolutionary movement.'],
+ ['merienda-halo-halo','merienda','Halo-Halo Especial','Halo-Halo Especial','Rare','Shaved ice, sweet beans, fruit, and leche flan meet in a colorful Filipino summer treat.'],
+ ['merienda-taho','merienda','Taho sa Umaga','Morning Taho','Common','Warm silken tofu, arnibal, and sago accompany the familiar morning call of neighborhood vendors.'],
+ ['merienda-bibingka','merienda',"Bibingka at Puto Bumbong",'Christmas Rice Cakes','Rare','These rice cakes recall dawn gatherings and the shared warmth of the Christmas season.'],
+ ['merienda-sorbetes','merienda','Kariton ng Sorbetes','Sorbetes Cart','Epic','Painted ice-cream carts bring local flavors and small-business ingenuity to neighborhood streets.'],
+ ['merienda-pandesal','merienda','Pandesal at Kape','Pandesal and Coffee','Common','Fresh bread and coffee make a modest breakfast worth savoring with family.'],
+ ['merienda-turon','merienda','Turon','Banana Spring Rolls','Common','Caramelized saba and jackfruit wrapped in a crisp shell turn simple ingredients into a beloved snack.']
+].map(([id,kind,nameFilipino,nameEnglish,rarity,culturalStory])=>({id,kind:kind as CollectibleKind,nameFilipino,nameEnglish,rarity:rarity as Collectible['rarity'],culturalStory,blurb:culturalStory,emoji:'',shelfTier:'Heritage collection',material:kind==='merienda'?'Culinary heritage':kind==='national-costumes'?'Cotton and embroidery':'Traditional craftsmanship',unlockRequirement:'Save coins and buy from the Aparador.',wearable:kind==='national-costumes',lookType:kind==='national-costumes'?'costume':undefined}));
+export const PRICES = {Common:15,Rare:30,Epic:50,Legendary:80} as const;
+export const ROLE_INFO = {
+ Asset:{label:'Puhunan',lesson:'Assets generate ongoing value and help pay for your future goals.',perk:'+1 Sunday coin each · up to +6/week'},
+ Reserve:{label:'Yamang Pamana',lesson:'Stores of value preserve wealth and anchor your financial foundation.',perk:'Build Heritage Net Worth · earn a Pahinga shield every 3 Reserves'},
+ Want:{label:'Kagustuhan',lesson:'Enjoy wants guilt-free once your saved surplus funds them.',perk:'A reward to enjoy · outfits can be worn by Hestia'}
+};
+export const COLLECTIBLES: Collectible[] = [...ALL_COLLECTIBLES,...additions].map(c=>({...c,price:PRICES[c.rarity],financialRole:c.kind==='farm-life'?'Asset':['ph-money','national-symbols','ancient-things'].includes(c.kind)?'Reserve':'Want',unlockRequirement:'Buy with coins collected from your Alkansya on Sunday.'}));
+export const COLLECTIBLE_BY_ID: Record<string,Collectible> = Object.fromEntries(COLLECTIBLES.map(c=>[c.id,c]));
+SHELF_CATEGORIES.splice(2,0,{id:'ancient-things',titleEnglish:'Ancient Artifacts & Heritage',titleFilipino:'Sinaunang Kayamanan',description:'Artifacts, craft, and records that connect generations.',icon:'',woodTone:'from-[#451A03] to-[#78350F]'});
+SHELF_CATEGORIES.splice(4,0,{id:'merienda',titleEnglish:'Pinoy Merienda & Street Heritage',titleFilipino:'Pagkaing Kalye at Merienda',description:'Cultural treats worth saving for and savoring.',icon:'',woodTone:'from-[#451A03] to-[#78350F]'});

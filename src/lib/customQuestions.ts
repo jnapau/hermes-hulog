@@ -20,7 +20,7 @@ export function useAllQuestions() { return useSyncExternalStore(cb => { listener
 export const useCustomQuestions = useAllQuestions;
 export async function addCustomQuestion(q: Omit<Question, 'id' | 'communityStats'> & { id?: string; communityStats?: Question['communityStats'] }) {
   const value = { ...q, id: q.id || crypto.randomUUID(), communityStats: q.communityStats || { correctPct: 0, sampleSize: 0 } };
-  const { error } = await supabase.from('questions').upsert({ id: value.id, text: value.promptFilipino, choices: value.options || value.items || [], correct_answer: value.answer || '', explanation: value.why, category: value.tier, scheduled_date: value.scheduledDate || null, recurring_day: value.recurringDay ?? null, slot: value.slot ?? 1, payload: value });
+  const { error } = await supabase.from('questions').upsert({ id: value.id, text: value.prompt, choices: value.options || value.items || [], correct_answer: value.answer || '', explanation: value.why, category: value.tier, scheduled_date: value.scheduledDate || null, recurring_day: value.recurringDay ?? null, slot: value.slot ?? 1, payload: value });
   if (error) throw new Error(error.message); await refreshQuestions(); return value;
 }
 export async function deleteCustomQuestion(id: string) {

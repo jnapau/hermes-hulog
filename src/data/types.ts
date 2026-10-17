@@ -64,6 +64,7 @@ export interface Question {
   whyFilipino?: string;
   /** Isang Hakbang — optional real-world micro-action */
   hakbang: string;
+  hakbangEnglish?: string;
   /** Anonymous community answer statistics */
   communityStats: QuestionCommunityStats;
 }
