@@ -88,14 +88,14 @@ export default function AdminOverview() {
               Scheduled for Today ({today})
             </h3>
             <p className="text-xs text-ink-muted">
-              The exact 3 cards served to all active players today:
+              Your current learning day. Each player advances independently after completing a drop.
             </p>
           </div>
           <Link
             to="/admin/calendar"
             className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
           >
-            Full Year Calendar <ArrowRight className="h-3 w-3" />
+            Learning Curriculum <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
 

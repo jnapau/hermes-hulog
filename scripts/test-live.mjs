@@ -11,6 +11,7 @@ const server=client(secret), player=client(publicKey), admin=client(publicKey);
 const name='qa_'+randomUUID().replaceAll('-','').slice(0,16);
 const password=randomUUID()+'!';
 let userId;
+let secondUserId;
 const check=({data,error})=>{if(error)throw new Error(error.message);return data;};
 try {
   const signed=check(await player.auth.signUp({email:`${name}@players.hulog.internal`,password,options:{data:{username:name}}}));
@@ -24,6 +25,7 @@ try {
   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const ids=check(await player.rpc('daily_question_ids',{p_date:date}));
   assert.equal(ids.length,3);
+  assert.deepEqual(ids.map(q=>q.id),['H-D001-1','H-D001-2','H-D001-3'],'new player starts on Day 1');
   const cards=check(await player.from('questions').select('*').in('id',ids.map(q=>q.id)));
   for(const card of cards) {
     const choice=card.payload.kind==='sort' ? JSON.stringify(Object.fromEntries(card.payload.items.map(i=>[i.key,i.answer]))) : card.correct_answer;
@@ -36,6 +38,17 @@ try {
   assert.equal(progress.plays[date].barya,3);
   assert.equal(progress.ginto,0);
   assert.equal(progress.alkansyaCoins,4,'perfect bonus is banked once');
+  assert.deepEqual(check(await player.rpc('daily_question_ids',{p_date:date})).map(q=>q.id),ids.map(q=>q.id),'saving never shifts today');
+  for(const gap of [1,3,30]){
+    const later=new Date(Date.parse(date+'T00:00:00Z')+gap*86400000).toISOString().slice(0,10);
+    assert.deepEqual(check(await player.rpc('daily_question_ids',{p_date:later})).map(q=>q.id),['H-D002-1','H-D002-2','H-D002-3'],'skipping days resumes at Day 2');
+  }
+  const second=client(publicKey),secondName='qa_'+randomUUID().replaceAll('-','').slice(0,16);
+  const secondSigned=check(await second.auth.signUp({email:secondName+'@players.hulog.internal',password:randomUUID()+'!',options:{data:{username:secondName}}}));
+  secondUserId=secondSigned.user?.id;
+  assert.ok(secondUserId&&secondSigned.session);
+  assert.deepEqual(check(await second.rpc('daily_question_ids',{p_date:date})).map(q=>q.id),['H-D001-1','H-D001-2','H-D001-3'],'second player stays on Day 1 while first player advances');
+  await second.auth.signOut();
   check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
   check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
   assert.equal(check(await player.from('profiles').select('progress').single()).progress.alkansyaCoins,9,'action is banked once');
@@ -51,10 +64,10 @@ try {
   check(await admin.rpc('set_admin',{p_user:userId,p_admin:false}));
   assert.equal(check(await player.from('profiles').select('*')).length,1,'demotion restores profile isolation immediately');
   await player.auth.signOut(); await returning.auth.signOut(); await admin.auth.signOut();
-  console.log('Live checks passed: immediate signup session, default player role, role isolation, server scoring, replay protection, saved progress restored, locked wearable rejection, and admin promote/demote.');
+  console.log('Live checks passed: independent player sequences, skipped-day continuity, stable daily cards, immediate signup, role isolation, scoring, replay protection, restored progress, locked wearables, and admin promote/demote.');
 } finally {
-  if(userId) {
-    const {error}=await server.auth.admin.deleteUser(userId);
+  for(const id of [userId,secondUserId].filter(Boolean)) {
+    const {error}=await server.auth.admin.deleteUser(id);
     if(error)throw new Error('QA cleanup failed; inspect the disposable test account.');
     console.log('Disposable QA account and its progress removed.');
   }

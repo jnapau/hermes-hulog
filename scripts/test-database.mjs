@@ -18,12 +18,20 @@ for (const file of readdirSync(
       insert into user_collections(user_id,item_id,category) values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','farm-kalabaw','farm-life');
       update profiles set coins=37,progress='{"plays":{},"restTokens":2,"ginto":5}' where username='upgrade_fixture';`);
   }
+  if(file.endsWith('_player_sequential_curriculum.sql')){
+    await db.exec("insert into questions(id,text,choices,correct_answer,explanation,category,scheduled_date,slot,payload) values('H2026-10-16-1','upgrade fixture','[]','TAMA','fixture','Cash Management','2026-10-16',1,'{\"id\":\"H2026-10-16-1\",\"scheduledDate\":\"2026-10-16\"}')");
+  }
   await db.exec(
     readFileSync(
       new URL("../supabase/migrations/" + file, import.meta.url),
       "utf8",
     ),
   );
+  if(file.endsWith('_player_sequential_curriculum.sql')){
+    const converted=(await db.query("select * from questions where id='H-D001-1'")).rows[0];
+    assert.equal(converted.sequence_day,1);assert.equal(converted.scheduled_date,null);assert.equal(converted.payload.sequenceDay,1);assert.equal(converted.payload.scheduledDate,undefined);
+    await db.exec("delete from questions where id='H-D001-1'");
+  }
   if (file.endsWith('_alkansya_economy.sql')) {
     const upgraded = (await db.query("select coins,progress from profiles where username='upgrade_fixture'")).rows[0];
     assert.equal(upgraded.coins,37,'upgrade preserves spendable savings');
@@ -48,35 +56,15 @@ const { selectDailyQuestions } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`
 );
 assert.equal(seed.questions.length, 1095);
-const curriculumMilestones = [
-  ['2026-10-16', 101, 'foundational'],
-  ['2026-11-16', 102, 'foundational'],
-  ['2026-12-16', 103, 'foundational'],
-  ['2027-01-01', 103, 'foundational'],
-  ['2027-01-16', 103, 'intermediate'],
-  ['2027-02-16', 104, 'intermediate'],
-  ['2027-03-16', 104, 'intermediate'],
-  ['2027-04-16', 105, 'intermediate'],
-  ['2027-05-16', 105, 'intermediate'],
-  ['2027-06-16', 106, 'advanced'],
-  ['2027-07-16', 107, 'advanced'],
-  ['2027-08-16', 108, 'advanced'],
-  ['2027-09-16', 108, 'advanced'],
-  ['2027-10-15', 108, 'advanced'],
-];
-for (const [date, course, progression] of curriculumMilestones) {
-  const cards = seed.questions.filter(q => q.scheduled_date === date);
-  assert.equal(cards.length, 3, `three curriculum cards on ${date}`);
-  for (const { payload } of cards) {
-    assert.equal(payload.course, course, `curriculum course on ${date}`);
-    assert.equal(payload.progression, progression, `curriculum level on ${date}`);
-  }
+const curriculumMilestones = [[1,101,'foundational'],[32,102,'foundational'],[62,103,'foundational'],[93,103,'intermediate'],[123,104,'intermediate'],[154,104,'intermediate'],[184,105,'intermediate'],[214,105,'intermediate'],[245,106,'advanced'],[275,107,'advanced'],[306,108,'advanced'],[336,108,'advanced'],[365,108,'advanced']];
+for(const [day,course,progression] of curriculumMilestones){
+ const cards=seed.questions.filter(q=>q.sequence_day===day);assert.equal(cards.length,3);
+ for(const q of cards){assert.equal(q.payload.course,course);assert.equal(q.payload.progression,progression);}
 }
-const progressionRank = { foundational: 0, intermediate: 1, advanced: 2 };
-const chronological = [...seed.questions].sort((a,b) => a.scheduled_date.localeCompare(b.scheduled_date) || a.slot - b.slot);
-for (let i = 1; i < chronological.length; i++) {
-  assert.ok(chronological[i].payload.course >= chronological[i-1].payload.course, 'curriculum courses never reset');
-  assert.ok(progressionRank[chronological[i].payload.progression] >= progressionRank[chronological[i-1].payload.progression], 'curriculum levels never regress');
+const progressionRank={foundational:0,intermediate:1,advanced:2};
+for(let i=1;i<seed.questions.length;i++){
+ assert.ok(seed.questions[i].payload.course>=seed.questions[i-1].payload.course,'courses never reset');
+ assert.ok(progressionRank[seed.questions[i].payload.progression]>=progressionRank[seed.questions[i-1].payload.progression],'levels never regress');
 }
 const catalogSize = seed.collection_items.length;
 assert.equal(catalogSize, 58);
@@ -112,7 +100,7 @@ for (const q of seed.questions) {
 console.log("Seeding question fixtures…");
 for (const q of seed.questions)
   await db.query(
-    "insert into questions values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+    "insert into questions(id,text,choices,correct_answer,explanation,category,scheduled_date,recurring_day,slot,payload) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
     [
       q.id,
       q.text,
@@ -126,40 +114,15 @@ for (const q of seed.questions)
       q.payload,
     ],
   );
-console.log("Checking complete calendar…");
-const calendar = (
-  await db.query(
-    "select d::date::text as play_day,x.id,x.slot from generate_series('2026-10-16'::date,'2027-10-15'::date,'1 day') d cross join lateral daily_question_ids(d::date) x order by d,x.slot",
-  )
-).rows;
-assert.equal(calendar.length, 1095);
-assert.equal(
-  new Set(calendar.map((c) => c.id)).size,
-  1095,
-  "no repeats in 2026-10-16..2027-10-15",
-);
-for (let i = 0; i < 365; i++) {
-  const date = new Date(Date.UTC(2026, 9, 16 + i)).toISOString().slice(0, 10);
-  const selected = selectDailyQuestions(
-    seed.questions.map((q) => q.payload),
-    date,
-  );
-  assert.deepEqual(
-    selected.map((q) => q.id),
-    calendar.filter((c) => c.play_day === date).map((c) => c.id),
-    "2026–2027 client/server agreement " + date,
-  );
-  assert.deepEqual(
-    selected.map((q) => q.difficulty),
-    ["easy", "medium", "challenge"],
-  );
-  assert.equal(selected[0].kind, "binary");
-  const dom = Number(date.slice(8));
-  if (dom === 15 || dom === 30)
-    assert.ok(
-      selected.every((q) => q.paydaySpecial),
-      "all payday slots use allocation",
-    );
+await db.exec("update questions set sequence_day=(payload->>'sequenceDay')::integer where payload ? 'sequenceDay'");
+console.log('Checking complete sequence…');
+for(let day=1;day<=365;day++){
+ const selected=seed.questions.filter(q=>q.sequence_day===day).map(q=>q.payload);
+ assert.deepEqual(selected.map(q=>q.slot),[1,2,3]);
+ assert.deepEqual(selected.map(q=>q.difficulty),['easy','medium','challenge']);
+ assert.ok(selected.every(q=>q.sequenceDay===day));
+ assert.ok(selected.every(q=>q.paydaySpecial===(day%15===0)),'payday follows sequence, not date');
+ assert.ok(seed.questions.filter(q=>q.sequence_day===day).every(q=>q.scheduled_date===null&&q.recurring_day===null));
 }
 for (const i of seed.collection_items)
   await db.query(
@@ -219,6 +182,53 @@ async function asUser(id) {
 async function rejected(fn, pattern) {
   await assert.rejects(fn, pattern);
 }
+console.log('Checking independent player journeys and skipped days…');
+const sequenceSubmit=(await db.query("select pg_get_functiondef('public.submit_answer(text,text)'::regprocedure) definition")).rows[0].definition;
+const sequenceSave=(await db.query("select pg_get_functiondef('public.save_progress(jsonb)'::regprocedure) definition")).rows[0].definition;
+const sequenceFixtures=[['66666666-6666-4666-8666-666666666666','journey_early','2026-10-16'],['77777777-7777-4777-8777-777777777777','journey_late','2027-07-19']];
+for(const [id,name,start] of sequenceFixtures){
+ await db.exec('reset role');
+ await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',[id,{username:name}]);
+ await db.query('update profiles set created_at=$1 where id=$2',[start,id]);
+ for(const [index,offset] of [0,4,35].entries()){
+  const playDate=new Date(Date.parse(start+'T00:00:00Z')+offset*86400000).toISOString().slice(0,10);
+  await db.exec('reset role');
+  await db.exec(sequenceSubmit.replaceAll('now()',"'"+playDate+"T04:00:00Z'::timestamptz"));
+  await db.exec(sequenceSave.replaceAll('now()',"'"+playDate+"T04:00:00Z'::timestamptz"));
+  await asUser(id);
+  const assigned=(await db.query('select id from daily_question_ids($1) order by slot',[playDate])).rows.map(q=>q.id);
+  assert.deepEqual(assigned,[1,2,3].map(slot=>'H-D'+String(index+1).padStart(3,'0')+'-'+slot),'skipped days never skip questions');
+  const before=(await db.query('select progress from profiles where id=$1',[id])).rows[0].progress;
+  assert.deepEqual(selectDailyQuestions(seed.questions.map(q=>q.payload),playDate,before.plays).map(q=>q.id),assigned,'client/server personal sequence agreement');
+  if(index===0){
+   const later=new Date(Date.parse(playDate+'T00:00:00Z')+3*86400000).toISOString().slice(0,10);
+   const q=seed.questions.find(q=>q.id===assigned[0]);
+   await db.query('select submit_answer($1,$2)',[q.id,q.correct_answer]);
+   assert.deepEqual((await db.query('select id from daily_question_ids($1) order by slot',[later])).rows.map(q=>q.id),assigned,'partial play does not advance the sequence');
+   await rejected(()=>db.query('select save_progress($1)',[{plays:{[playDate]:{}}}]),/Complete all three/);
+  }
+  for(const questionId of assigned){const q=seed.questions.find(q=>q.id===questionId);await db.query('select submit_answer($1,$2)',[q.id,q.correct_answer]);}
+  await db.query('select save_progress($1)',[{plays:{[playDate]:{results:[true,true,true]}}}]);
+  assert.deepEqual((await db.query('select id from daily_question_ids($1) order by slot',[playDate])).rows.map(q=>q.id),assigned,'saving today never shifts today');
+  const after=(await db.query('select progress from profiles where id=$1',[id])).rows[0].progress;
+  assert.deepEqual(selectDailyQuestions(seed.questions.map(q=>q.payload),playDate,after.plays).map(q=>q.id),assigned);
+ }
+ await db.exec('reset role');
+ // Sweep every sequence day, including wraparound, using trusted completion fixtures.
+ const plays={};
+ for(let count=0;count<=365;count++){
+  const date='2030-12-31';
+  await db.query('update profiles set progress=$1 where id=$2',[{plays},id]);
+  await asUser(id);
+  const assigned=(await db.query('select id from daily_question_ids($1) order by slot',[date])).rows.map(q=>q.id);
+  assert.deepEqual(assigned,[1,2,3].map(slot=>'H-D'+String(count%365+1).padStart(3,'0')+'-'+slot));
+  assert.deepEqual(selectDailyQuestions(seed.questions.map(q=>q.payload),date,plays).map(q=>q.id),assigned);
+  await db.exec('reset role');
+  plays[new Date(Date.UTC(2028,0,count+1)).toISOString().slice(0,10)]={results:[true,true,true]};
+ }
+}
+for(const [id] of sequenceFixtures)await db.query('delete from auth.users where id=$1',[id]);
+await db.exec(sequenceSubmit);await db.exec(sequenceSave);
 await asUser(player);
 assert.equal(
   (await db.query("select * from profiles")).rows.length,
@@ -291,6 +301,7 @@ const cards = (
   )
 ).rows;
 assert.equal(cards.length, 3);
+await rejected(()=>db.query('select submit_answer($1,$2)',['H-D002-1',seed.questions.find(q=>q.id==='H-D002-1').correct_answer]),/not scheduled/);
 for (const q of cards) {
   const choice =
     q.payload.kind === "sort"
@@ -424,7 +435,7 @@ await db.query(
   "update questions set scheduled_date=null where scheduled_date=$1 and slot=1",
   [date],
 );
-await db.query("insert into questions values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [
+await db.query("insert into questions(id,text,choices,correct_answer,explanation,category,scheduled_date,recurring_day,slot,payload) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [
   override.id,
   override.text,
   override.choices,
@@ -442,6 +453,14 @@ assert.equal(
   "override",
   "date override takes priority",
 );
+await db.query("insert into questions(id,text,choices,correct_answer,explanation,category,recurring_day,slot,payload) select 'recurring_override',text,choices,correct_answer,explanation,category,extract(dow from $1::date)::integer,1,payload from questions where id='H-D001-1'",[date]);
+assert.equal((await db.query('select id from daily_question_ids($1) where slot=1',[date])).rows[0].id,'override','explicit date beats weekday override');
+await db.query("delete from questions where id='override'");
+assert.equal((await db.query('select id from daily_question_ids($1) where slot=1',[date])).rows[0].id,'recurring_override','weekday override beats personal sequence');
+const overrideRows=(await db.query('select * from questions')).rows;
+assert.equal(selectDailyQuestions(overrideRows.map(q=>({...q.payload,id:q.id,scheduledDate:q.scheduled_date,recurringDay:q.recurring_day,sequenceDay:q.sequence_day,slot:q.slot})),date)[0].id,'recurring_override','client honors weekday override too');
+await db.query("delete from questions where id='recurring_override'");
+assert.equal((await db.query('select id from daily_question_ids($1) where slot=1',[date])).rows[0].id,'H-D001-1','removing overrides restores personal sequence');
 // Freeze only the payout function's clock, leaving production SQL untouched.
 await db.exec("reset role");
 const originalOpen = (
@@ -624,6 +643,7 @@ assert.equal(
 await db.exec("reset role");
 await db.query("select set_config('request.jwt.claim.sub','',false)");
 await db.exec("set role anon");
+await rejected(() => db.query('select * from daily_question_ids(current_date)'), /permission denied/);
 await rejected(() => db.query("select * from profiles"), /permission denied/);
 await rejected(() => db.query("select open_alkansya()"), /permission denied/);
 await rejected(

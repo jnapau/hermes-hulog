@@ -30,8 +30,8 @@ type Submission = {
 
 export default function Play() {
   const today = todayPH();
-  const schedule = getDaySchedule(today);
   const progress = useProgress();
+  const schedule = getDaySchedule(today, progress);
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.is_admin === true;
   const saved = isAdmin
@@ -365,7 +365,7 @@ export default function Play() {
             ? "Sweldo Hulog Special"
             : `FRP ${question.course} · ${question.tier}`}
         </span>
-        <b>{cardIndex + 1} / 3</b>
+        <b>Day {schedule.hulogNumber} · {cardIndex + 1} / 3</b>
       </header>
       <div className="play-progress" aria-label={`Card ${cardIndex + 1} of 3`}>
         <i

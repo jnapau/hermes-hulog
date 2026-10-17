@@ -16,6 +16,7 @@ import { playBasag } from "../lib/sound";
 import { COLLECTIBLE_BY_ID } from "../data/collectibles";
 import { useAuth } from "../lib/users";
 import { AuthModal } from "../components/AuthModal";
+import { activeSequenceDay } from "../lib/dailyQuestions";
 
 export default function Home() {
   const progress = useProgress(),
@@ -80,7 +81,7 @@ export default function Home() {
         ) : (
           <Link to="/play" className="btn-flame sanctuary-cta">
             <Play size={18} />
-            <span>Today’s daily drop · 3 minutes</span>
+            <span>Day {activeSequenceDay(today, progress.plays)} · Today’s daily drop</span>
           </Link>
         )}
         <dl className="player-stats">

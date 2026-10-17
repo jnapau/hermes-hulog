@@ -35,27 +35,21 @@ function choices(good, bad, rotation) {
   };
 }
 for (let day = 0; day < 365; day++) {
-  const date = new Date(Date.UTC(2026, 9, 16 + day)),
-    scheduledDate = date.toISOString().slice(0, 10),
-    dom = date.getUTCDate(),
-    // Learning months start on the 16th, independently of calendar-year changes.
-    month = (date.getUTCFullYear() - 2026) * 12 + date.getUTCMonth() - 9 - (dom < 16 ? 1 : 0),
-    monthStart = Date.UTC(2026, 9 + month, 16),
-    curriculumDay = Math.round((date.getTime() - monthStart) / 86400000) + 1;
+  const stage = Math.min(11, Math.floor((day * 12) / 365));
   for (let s = 0; s < 3; s++) {
-    const unit = units[month * 10 + ((curriculumDay * 3 + s) % 10)],
-      home = households[(curriculumDay + s * 11 + month * 7) % households.length],
+    const unit = units[stage * 10 + ((day * 3 + s) % 10)],
+      home = households[(day + s * 11 + stage * 7) % households.length],
       positive = day % 2 === 0;
     const q = {
-      id: `H${scheduledDate}-${s + 1}`,
-      scheduledDate,
+      id: `H-D${String(day + 1).padStart(3, '0')}-${s + 1}`,
+      sequenceDay: day + 1,
       slot: s + 1,
-      course: courses[month],
-      tier: tiers[month],
+      course: courses[stage],
+      tier: tiers[stage],
       difficulty: ["easy", "medium", "challenge"][s],
       progression:
-        month < 3 ? "foundational" : month < 8 ? "intermediate" : "advanced",
-      paydaySpecial: dom === 15 || dom === 30,
+        stage < 3 ? "foundational" : stage < 8 ? "intermediate" : "advanced",
+      paydaySpecial: (day + 1) % 15 === 0,
       communityStats: { correctPct: 0, sampleSize: 0 },
       kind: s === 0 ? "binary" : "choice",
       format: s === 0 ? "Tama o Mali?" : "Ano'ng Gagawin Mo?",
@@ -104,8 +98,8 @@ for (let day = 0; day < 365; day++) {
       });
     }
     if (q.paydaySpecial) {
-      const cash = 9000 + month * 500,
-        bills = 5000 + month * 200,
+      const cash = 9000 + stage * 500,
+        bills = 5000 + stage * 200,
         reserve = 1000;
       if (s === 0)
         Object.assign(q, {
@@ -136,7 +130,7 @@ for (let day = 0; day < 365; day++) {
     questions.push(q);
   }
 }
-questions.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate) || a.slot - b.slot);
+questions.sort((a, b) => a.sequenceDay - b.sequenceDay || a.slot - b.slot);
 if (
   questions.length !== 1095 ||
   units.length !== 120 ||

@@ -16,10 +16,10 @@ export default function QuestionEditor() {
   const [search, setSearch] = useState("");
   return (
     <section>
-      <h1 className="text-2xl font-bold mb-2">Question Bank & Calendar</h1>
+      <h1 className="text-2xl font-bold mb-2">Question Bank & Curriculum</h1>
       <p className="text-sm mb-5">
-        Assign one card per slot to a date or recurring weekday. Exact dates
-        take priority over recurring cards, then the curriculum rotation.
+        Assign three cards to each sequence day. Optional date and weekday
+        overrides take priority over each player’s current learning day.
       </p>
       <button
         className="btn-flame text-sm py-2"
@@ -46,9 +46,9 @@ export default function QuestionEditor() {
             setError("");
             const f = new FormData(e.currentTarget);
             try {
-              if (f.get("date") && f.get("day") !== "")
+              if ([Boolean(f.get('sequenceDay')), Boolean(f.get('date')), f.get('day') !== ''].filter(Boolean).length !== 1)
                 throw new Error(
-                  "Choose either a specific date or a recurring weekday.",
+                  "Choose one sequence day, specific date, or recurring weekday.",
                 );
               const kind = String(f.get("kind")) as Question["kind"];
               const format = String(f.get("format"));
@@ -132,7 +132,9 @@ export default function QuestionEditor() {
               const course = Number(f.get("course")) as Question["course"];
               const tier = COURSES.find((c) => c.code === course)!.tier;
               await addCustomQuestion({
+                ...editing,
                 id: editing?.id,
+                sequenceDay: f.get('sequenceDay') ? Number(f.get('sequenceDay')) : null,
                 kind,
                 course,
                 tier,
@@ -301,9 +303,13 @@ export default function QuestionEditor() {
               defaultValue={editing?.hakbang}
             />
           </label>
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <label>
-              Scheduled date
+              Sequence day (1–365)
+              <input className="field" name="sequenceDay" type="number" min={1} max={365} defaultValue={editing?.sequenceDay ?? ''}/>
+            </label>
+            <label>
+              Override date
               <input
                 className="field"
                 name="date"
@@ -397,7 +403,7 @@ export default function QuestionEditor() {
                   </td>
                   <td>
                     {q.scheduledDate ||
-                      (q.recurringDay != null
+                      (q.sequenceDay != null ? `Day ${q.sequenceDay}` : q.recurringDay != null
                         ? [
                             "Sunday",
                             "Monday",
@@ -407,7 +413,7 @@ export default function QuestionEditor() {
                             "Friday",
                             "Saturday",
                           ][q.recurringDay]
-                        : "Rotation")}{" "}
+                        : "Unassigned")}{" "}
                     · Card {q.slot}
                   </td>
                   <td>

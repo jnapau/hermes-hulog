@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ALL_FORMATS, ALL_TIERS } from '../../data/questions';
 import { COURSES } from '../../data/courses';
-import { buildAppearanceIndex, SCHEDULE_START } from '../../lib/schedule';
-import { todayPH, addDays, formatShort } from '../../lib/date';
 import { TIER_STYLE, FinancialTier, CourseCode, CardKind } from '../../data/types';
 import {
   Search,
@@ -25,7 +23,6 @@ import {
 import { getAllAnswerLogs } from '../../lib/users';
 
 export default function AdminQuestions() {
-  const today = todayPH();
   const allQuestions = useAllQuestions();
   const customQuestions = getCustomQuestions();
   const customIds = new Set(customQuestions.map((q) => q.id));
@@ -62,11 +59,6 @@ export default function AdminQuestions() {
   const [whyFil, setWhyFil] = useState('');
   const [hakbangAction, setHakbangAction] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-
-  // Compute appearances
-  const appearances = useMemo(() => {
-    return buildAppearanceIndex(SCHEDULE_START, addDays(today, 90));
-  }, [today, allQuestions]);
 
   const filteredQuestions = useMemo(() => {
     return allQuestions.filter((q) => {
@@ -241,7 +233,7 @@ export default function AdminQuestions() {
 
         <div className="flex items-center justify-between text-2xs text-ink-muted font-bold pt-1">
           <span>{filteredQuestions.length} cards matching criteria</span>
-          <span>Click card to inspect bilingual details & schedule dates</span>
+          <span>Click card to inspect bilingual details & sequence day</span>
         </div>
       </div>
 
@@ -249,8 +241,6 @@ export default function AdminQuestions() {
       <div className="space-y-3">
         {filteredQuestions.map((q) => {
           const isExpanded = expandedId === q.id;
-          const apps = appearances.get(q.id) || [];
-          const nextShow = apps.find((a) => a.date >= today);
           const style = TIER_STYLE[q.tier] || TIER_STYLE['Cash Management'];
           const isCustom = customIds.has(q.id);
 
@@ -299,12 +289,7 @@ export default function AdminQuestions() {
                         0 user answers
                       </span>
                     )}
-                    {nextShow && (
-                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-2xs font-bold text-sky-700 flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Next show: {nextShow.date} ({nextShow.date === today ? 'Today!' : formatShort(nextShow.date)})
-                      </span>
-                    )}
+                    {q.sequenceDay && <span className="text-xs text-sky-700"><Calendar className="inline h-3 w-3"/> Day {q.sequenceDay}</span>}
                   </div>
 
                   {/* English Prompt */}
@@ -412,32 +397,7 @@ export default function AdminQuestions() {
                     </p>
                   </div>
 
-                  {/* Scheduled Show Dates */}
-                  <div>
-                    <span className="font-bold text-ink-muted text-[10px] uppercase">
-                      Scheduled Show Dates (Next 90 Days):
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {apps.length === 0 ? (
-                        <span className="text-ink-muted italic text-[11px]">No shows in next 90 days</span>
-                      ) : (
-                        apps.map((a, i) => (
-                          <span
-                            key={i}
-                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                              a.date === today
-                                ? 'bg-amber-400 text-cocoa'
-                                : a.date > today
-                                ? 'bg-stone-200 text-ink'
-                                : 'bg-stone-100 text-stone-400'
-                            }`}
-                          >
-                            {a.date} ({a.role})
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                  <p>Learning day: {q.sequenceDay ?? 'Calendar override'}. Players reach this card after completing the preceding drops.</p>
                 </div>
               )}
             </div>

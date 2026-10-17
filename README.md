@@ -2,6 +2,8 @@
 
 React 18, TypeScript, Tailwind, Vite and Supabase. Three daily Filipino financial-literacy cards, a bamboo coin bank, persistent player accounts, seven collection shelves, wearable Hestia costumes, and a database-protected admin panel.
 
+Each player follows a personal 365-day curriculum. Their current day is `(completed drops excluding today % 365) + 1`; missing calendar days never skips lessons, and saving today never changes today's cards. Stages progress from FRP 101 Foundational to FRP 108 Advanced, with Sweldo Hulog Special every 15th learning day. Daily completion limits and Sunday rewards still use Asia/Manila calendar dates. Existing completed drops count toward the sequence; administrator practice remains unrecorded.
+
 ## Run locally
 
 1. Run `npm ci`.
@@ -18,7 +20,7 @@ The connected account must have access to the target project. The public key can
 2. Apply `supabase/migrations/20261017200030_alkansya_economy.sql` after the existing migrations. It preserves Wallet balances, retires placeholder catalog entries, maps duplicate ownership to canonical items, and installs the validated economy RPCs.
 3. In Supabase Auth settings, enable email/password signup and disable **Confirm email**. Players only enter a username/password; the app maps usernames to internal identifiers such as `name@players.hulog.internal`. There is no email recovery flow for these identifiers. Set appropriate Auth rate limits for public signup.
 4. Set server environment variables `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `HULOG_ADMIN_PASSWORD` in a secure terminal. Use the requested initial administrator password for the last variable. Do not store it in source control.
-5. Run `npm run seed`. It imports 1,095 scheduled 2026 curriculum cards (365 days × 3 slots across FRP 101–108) and 58 collectibles, creates or verifies the reserved `hermeshulog` account with an administrator role, and unlocks all 58 collectibles for administrator accounts. Existing seeded accounts are verified without resetting their passwords. The script refuses to promote an unmarked pre-existing identity.
+5. Apply `supabase/migrations/20261017213731_player_sequential_curriculum.sql`, then run `npm run seed`. It imports 1,095 sequential curriculum cards (365 days × 3 slots across FRP 101–108) and 58 collectibles, retires the former generated calendar IDs while preserving answer history and custom overrides, verifies the reserved `hermeshulog` administrator, and unlocks all collectibles for administrators. Existing seeded accounts are verified without resetting their passwords. The script refuses to promote an unmarked pre-existing identity.
 6. Verify login, registration, refresh persistence, player isolation, and administrator access against the live project.
 
 The seed idempotently replaces the known curriculum IDs with generated content; custom question IDs remain untouched. Run `node scripts/build-seed.mjs` to regenerate its input after changing the source curriculum or collection catalog. Catalog IDs, names, bilingual choices, and daily calendar coverage are checked by the database test suite.
@@ -38,7 +40,7 @@ Saving waits for the server before confirming completion. Guest play is gated by
 - `/`: Daily drop, Alkansya savings, spendable Wallet, pinned savings goal, forgiving streak, and Sunday coin payout.
 - `/play`: Three scheduled cards. English questions, choices, and feedback lead; Filipino translations appear underneath. A perfect 3/3 adds one banked coin. The standalone Isang Hakbang step adds five banked coins. Sorting submissions are graded on the server. Coin feedback uses Web Audio synthesis and local CSS animation; there are no external audio assets.
 - `/koleksyon`: Aparador with Philippine money, national treasures, ancient artifacts, livelihood assets, merienda, national costumes, and mythical looks. Items cost 15/30/50/80 Wallet coins by rarity. Unlocked wearable layers visibly change the official Hestia artwork.
-- `/admin/questions`: Create/edit/delete questions, set a specific date or recurring weekday, assign slots 1–3, and inspect the calendar. One card per date/weekday and slot prevents ambiguous schedules. Exact dates take priority over recurrence, then the seeded rotation fills remaining slots.
+- `/admin/questions`: Browse Day 1–365 with course, level, and three ordered slots. Edit a sequence assignment or configure a date/weekday override. One card per sequence day/date/weekday and slot prevents ambiguous assignments. Exact dates take priority over recurrence, then the player's sequence fills remaining slots.
 - `/admin/users`: Registered usernames, creation dates, coins, streaks, collection counts, and promote/demote controls.
 - `/admin`: Responsive SVG activity/accuracy trends, six-tier mastery bars, format/difficulty accuracy rings, and commonly missed questions, computed from actual answer records.
 

@@ -222,13 +222,13 @@ try {
     const heading = await page.locator(".play-question h1").textContent();
     assert.equal(
       heading,
-      seed.questions.find((q) => q.scheduled_date === today && q.slot === 1)
+      seed.questions.find((q) => q.sequence_day === 1 && q.slot === 1)
         .payload.prompt,
     );
     await page.screenshot({ path: `${out}/${label}-play.png`, fullPage: true });
     for (let slot = 1; slot <= 3; slot++) {
       const q = seed.questions.find(
-        (q) => q.scheduled_date === today && q.slot === slot,
+        (q) => q.sequence_day === 1 && q.slot === slot,
       ).payload;
       const index =
         q.kind === "binary"
@@ -252,7 +252,6 @@ try {
     await page
       .getByText("Perfect Hulog · +1 bonus coin!", { exact: true })
       .waitFor();
-    await page.locator("textarea").fill("Set aside my next essential payment.");
     await page
       .getByRole("button", { name: "I completed this step · +5 coins" })
       .click();
@@ -269,6 +268,13 @@ try {
     await page.screenshot({ path: `${out}/${label}-payout.png` });
     await ctx.close();
     const a = await session(viewport, true);
+    await a.page.goto('http://127.0.0.1:5173/admin/questions');
+    await a.page.getByRole('heading',{name:'365-day learning curriculum'}).waitFor();
+    await a.page.getByRole('heading',{name:'Day #1 · FRP 101 · foundational'}).waitFor();
+    await a.page.getByRole('button',{name:'Day 365',exact:true}).click();
+    await a.page.getByRole('heading',{name:'Day #365 · FRP 108 · advanced'}).waitFor();
+    await a.page.screenshot({path:out+'/'+label+'-sequence-curriculum.png',fullPage:true});
+    assert.equal(await a.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'sequence viewer fits viewport');
     await a.page.goto("http://127.0.0.1:5173/admin");
     await a.page
       .getByRole("heading", { name: "Daily activity & accuracy" })
@@ -286,4 +292,3 @@ try {
 } finally {
   await browser.close();
 }
-

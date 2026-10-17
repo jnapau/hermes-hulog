@@ -7,10 +7,20 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !HULOG_ADMIN_PASSWORD) throw 
 const db=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const seed=JSON.parse(readFileSync(new URL('../supabase/seed-data.json',import.meta.url),'utf8'));
 for(const table of ['questions','collection_items']) {
- // Idempotent updates keep fixes and explicit calendar assignments in sync.
+ // Idempotent updates preserve edits to the known sequential curriculum IDs.
  for (let offset=0;offset<seed[table].length;offset+=200) {
   const {error}=await db.from(table).upsert(seed[table].slice(offset,offset+200),{onConflict:'id'});if(error)throw error;
  }
+}
+// Retire only the previous generated calendar curriculum; retain answer history and custom overrides.
+const legacy=[];
+for(let offset=0;;offset+=500){
+ const {data,error}=await db.from('questions').select('id').like('id','H202%').order('id').range(offset,offset+499);
+ if(error)throw error;legacy.push(...(data||[]));if(!data||data.length<500)break;
+}
+const retired=legacy.filter(q=>/^H202[67]-\d{2}-\d{2}-[123]$/.test(q.id));
+for(let offset=0;offset<retired.length;offset+=200){
+ const {error}=await db.from('questions').delete().in('id',retired.slice(offset,offset+200).map(q=>q.id));if(error)throw error;
 }
 const email='hermeshulog@players.hulog.internal';
 let admin;
