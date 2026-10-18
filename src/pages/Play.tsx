@@ -36,7 +36,7 @@ export default function Play() {
   const progress = useProgress();
   const { currentUser, logs } = useAuth();
   const isAdmin = currentUser?.is_admin === true;
-  const [practiceDay, setPracticeDay] = useState(() => activeSequenceDay(today, progress.plays));
+  const [practiceDay, setPracticeDay] = useState(() => activeSequenceDay(today, progress.plays, progress.sequenceOffset ?? 0));
   const schedule = isAdmin ? getPracticeSchedule(today, practiceDay) : getDaySchedule(today, progress);
   const username = currentUser?.username || getCurrentUsername();
   const saved = isAdmin
@@ -81,9 +81,8 @@ export default function Play() {
   // Restore saved partial progress when returning to Play or after account logs finish hydrating
   useEffect(() => {
     if (isAdmin || !schedule || submissions.current.length > 0) return;
-    if (!saved.some(Boolean)) return;
     setResults(saved.map((a) => a?.isCorrect));
-    if (missing === -1) {
+    if (missing === -1 && saved.length === 3) {
       locked.current = true;
       setCardIndex(2);
       setSelected(saved[2]?.userChoice || null);
@@ -97,12 +96,12 @@ export default function Play() {
       setFeedback(true);
     } else {
       locked.current = false;
-      setCardIndex(missing);
+      setCardIndex(Math.max(0, missing));
       setSelected(null);
       setMapping({});
       setFeedback(false);
     }
-  }, [isAdmin, savedSignature, missing]);
+  }, [isAdmin, schedule?.cards[0]?.question.id, savedSignature, missing]);
 
   const clearTimers = () => {
     clearTimeout(coinTimer.current);

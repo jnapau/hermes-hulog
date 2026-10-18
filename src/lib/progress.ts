@@ -20,6 +20,7 @@ export interface Progress {
   targetGoal: string | null;
   cashouts: Record<ISODate, { saved: number; passive: number; total: number }>;
   plays: Record<ISODate, PlayRecord>;
+  sequenceOffset?: number;
   ginto: number;
   restTokens: number;
   restDays: ISODate[];
@@ -38,6 +39,7 @@ const DEFAULT: Progress = {
   targetGoal: null,
   cashouts: {},
   plays: {},
+  sequenceOffset: 0,
   ginto: 0,
   restTokens: 0,
   restDays: [],

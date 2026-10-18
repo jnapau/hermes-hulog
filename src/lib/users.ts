@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
 import { COLLECTIBLES } from '../data/collectibles';
+import { activeSequenceDay } from './dailyQuestions';
 import { todayPH } from './date';
 import { configured, reportError, supabase } from './supabase';
-export interface User { id: string; username: string; registeredAt: string; is_admin: boolean; coins: number; streak: number; unlocked: number }
+export interface User { id: string; username: string; registeredAt: string; is_admin: boolean; coins: number; streak: number; unlocked: number; questionDay: number; todayAnswered: number; todayCompleted: boolean }
 export interface AnswerLog { id: string; username: string; questionId: string; userChoice: string; isCorrect: boolean; date: string; timestamp: string }
 let state = { currentUser: null as User | null, users: [] as User[], logs: [] as AnswerLog[], equippedLook: null as string | null, loading: true, ownedIds: [] as string[] };
 const listeners = new Set<() => void>();
@@ -17,7 +18,27 @@ async function readRows(table: string, columns = '*') {
     if (!data || data.length < 500) return all;
   }
 }
-const userFrom = (p: { id: string; username: string; created_at: string; is_admin: boolean; coins: number; streak: number }, count = 0): User => ({ id: p.id, username: p.username, registeredAt: p.created_at, is_admin: p.is_admin, coins: p.coins, streak: p.streak, unlocked: count });
+const userFrom = (
+  p: { id: string; username: string; created_at: string; is_admin: boolean; coins: number; streak: number; progress?: Record<string, any> },
+  count = 0,
+  today = todayPH(),
+  todayAnswered = 0,
+): User => {
+  const plays = p.progress?.plays && typeof p.progress.plays === 'object' ? p.progress.plays : {};
+  const offset = typeof p.progress?.sequenceOffset === 'number' ? p.progress.sequenceOffset : 0;
+  return {
+    id: p.id,
+    username: p.username,
+    registeredAt: p.created_at,
+    is_admin: p.is_admin,
+    coins: p.coins,
+    streak: p.streak,
+    unlocked: count,
+    questionDay: activeSequenceDay(today, plays, offset),
+    todayAnswered,
+    todayCompleted: Boolean(plays[today]),
+  };
+};
 const PARTIAL_KEY = 'hulog:partial-answers';
 function readLocalAnswers(username: string, date: string): AnswerLog[] {
   try {
@@ -44,34 +65,40 @@ export async function refreshAccount() {
   if (run !== generation) return;
   if (profile.error || collections.error) { state.loading = false; notify(); throw new Error('Your account could not load. Please refresh to try again.'); }
   const p = profile.data;
+  const today = todayPH();
   state.ownedIds = p.is_admin ? COLLECTIBLES.map(c => c.id) : (collections.data || []).map(c => c.item_id).filter(id => COLLECTIBLES.some(c => c.id === id));
-  state.currentUser = userFrom(p, state.ownedIds.length);
   state.equippedLook = p.equipped_outfit;
-  state.users = [state.currentUser];
   if (p.is_admin) {
     const [users, logs, owned] = await Promise.all([readRows('profiles'), readRows('user_answers'), readRows('user_collections')]);
     if (run !== generation) return;
-    state.users = users.map(u => userFrom(u as Parameters<typeof userFrom>[0], u.is_admin ? COLLECTIBLES.length : owned.filter(c => c.user_id === u.id).length));
+    state.users = users.map(u => {
+      const todayCount = logs.filter(a => a.user_id === u.id && a.play_date === today).length;
+      return userFrom(u as Parameters<typeof userFrom>[0], u.is_admin ? COLLECTIBLES.length : owned.filter(c => c.user_id === u.id).length, today, todayCount);
+    });
+    state.currentUser = state.users.find(u => u.id === p.id) || userFrom(p, state.ownedIds.length, today, 0);
     const adminIds = new Set(state.users.filter(u => u.is_admin).map(u => u.id));
     state.logs = logs.filter(a => !adminIds.has(a.user_id)).map(a => ({ id: a.id, username: state.users.find(u => u.id === a.user_id)?.username || 'Deleted user', questionId: a.question_id, userChoice: a.user_choice, isCorrect: a.is_correct, date: a.play_date, timestamp: a.answered_at }));
   } else {
-    const today = todayPH();
     const { data, error } = await supabase.from('user_answers').select('*').eq('user_id',session.user.id).eq('play_date',today);
     if (run !== generation) return;
     if (error) throw new Error('Your saved answers could not load. Please refresh to retry.');
     const serverLogs: AnswerLog[] = (data || []).map(a => ({id:a.id,username:p.username,questionId:a.question_id,userChoice:a.user_choice,isCorrect:a.is_correct,date:a.play_date,timestamp:a.answered_at}));
     const localLogs = readLocalAnswers(p.username, today);
     const unsent = localLogs.filter(l => !serverLogs.some(s => s.questionId === l.questionId));
+    const stillUnsent: AnswerLog[] = [];
     for (const pending of unsent) {
       const res = await supabase.rpc('submit_answer', { p_question: pending.questionId, p_choice: pending.userChoice });
       if (!res.error) {
         serverLogs.push({ ...pending, isCorrect: typeof res.data === 'boolean' ? res.data : pending.isCorrect });
       } else {
         serverLogs.push(pending);
+        stillUnsent.push(pending);
       }
     }
-    writeLocalAnswers(p.username, today, serverLogs);
+    writeLocalAnswers(p.username, today, stillUnsent);
     state.logs = serverLogs;
+    state.currentUser = userFrom(p, state.ownedIds.length, today, serverLogs.length);
+    state.users = [state.currentUser];
   }
   state.loading = false;
   window.dispatchEvent(new CustomEvent('hulog:hydrate', { detail: p.progress || {} }));
@@ -113,11 +140,17 @@ export async function recordUserAnswer(questionId: string, userChoice: string, c
     };
     const nextLogs = [...state.logs.filter(a => !(a.username === username && a.date === date && a.questionId === questionId)), entry];
     state.logs = nextLogs;
-    writeLocalAnswers(username, date, nextLogs);
+    const pendingLogs = [...readLocalAnswers(username, date).filter(a => a.questionId !== questionId), entry];
+    writeLocalAnswers(username, date, pendingLogs);
     notify();
   }
   const { data, error } = await supabase.rpc('submit_answer', { p_question: questionId, p_choice: userChoice });
-  if (error) throw new Error(error.message); await refreshAccount(); return data as boolean;
+  if (error) throw new Error(error.message);
+  if (username && !state.currentUser?.is_admin) {
+    writeLocalAnswers(username, date, readLocalAnswers(username, date).filter(a => a.questionId !== questionId));
+  }
+  await refreshAccount();
+  return data as boolean;
 }
 export async function setEquippedLook(lookId: string | null) {
   const { error } = await supabase.rpc('equip_item', { p_item: lookId });
@@ -125,6 +158,10 @@ export async function setEquippedLook(lookId: string | null) {
 }
 export async function setAdmin(id: string, admin: boolean) {
   const { error } = await supabase.rpc('set_admin', { p_user: id, p_admin: admin });
+  if (error) throw new Error(error.message); await refreshAccount();
+}
+export async function setUserQuestionDay(id: string, day: number | null = null) {
+  const { error } = await supabase.rpc('admin_set_user_day', { p_user: id, p_day: day });
   if (error) throw new Error(error.message); await refreshAccount();
 }
 if (configured) {

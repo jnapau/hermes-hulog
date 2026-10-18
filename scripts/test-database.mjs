@@ -650,6 +650,57 @@ assert.equal(
     .equipped_outfit,
   null,
 );
+
+// Admin can reset today's progress and change a player's active question day for QA testing.
+await rejected(
+  () => db.query("select admin_set_user_day($1, 4)", [player]),
+  /Administrator access required/,
+);
+await db.exec("reset role");
+const originalAdminSetDay = (
+  await db.query(
+    "select pg_get_functiondef('public.admin_set_user_day(uuid,integer)'::regprocedure) definition",
+  )
+).rows[0].definition;
+await db.exec(
+  originalAdminSetDay.replaceAll("now()", "'2026-10-18T04:00:00Z'::timestamptz"),
+);
+await asUser(admin);
+await db.query("select admin_set_user_day($1, 4)", [player]);
+await asUser(player);
+const afterAdminDayChange = (
+  await db.query("select progress from profiles where id=$1", [player])
+).rows[0].progress;
+assert.equal(afterAdminDayChange.plays["2026-10-18"], undefined, "admin day change resets today's play entry");
+assert.equal(
+  (
+    await db.query(
+      "select * from user_answers where user_id=$1 and play_date='2026-10-18'",
+      [player],
+    )
+  ).rows.length,
+  0,
+  "admin day change clears today's submitted answers",
+);
+const assignedAfterAdminChange = (
+  await db.query("select id from daily_question_ids('2026-10-18') order by slot")
+).rows.map((q) => q.id);
+assert.deepEqual(
+  assignedAfterAdminChange,
+  ["H-D004-1", "H-D004-2", "H-D004-3"],
+  "admin day change sets player's active question day to Day 4",
+);
+assert.deepEqual(
+  selectDailyQuestions(
+    seed.questions.map((q) => q.payload),
+    "2026-10-18",
+    afterAdminDayChange.plays,
+    afterAdminDayChange.sequenceOffset,
+  ).map((q) => q.id),
+  assignedAfterAdminChange,
+  "client and server agree on sequenceOffset question day",
+);
+
 await db.exec("reset role");
 await db.query("select set_config('request.jwt.claim.sub','',false)");
 await db.exec("set role anon");

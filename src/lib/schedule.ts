@@ -43,9 +43,9 @@ export function getPracticeSchedule(date: ISODate, sequenceDay: number): DaySche
 }
 
 /** Calendar dates enforce the daily limit; completed drops choose the curriculum day. */
-export function getDaySchedule(date: ISODate, progress: Pick<Progress, 'plays'> = getProgress()): DaySchedule | null {
-  const sequenceDay = activeSequenceDay(date, progress.plays);
-  const assigned = dailyQuestions(date, progress.plays);
+export function getDaySchedule(date: ISODate, progress: Pick<Progress, 'plays' | 'sequenceOffset'> = getProgress()): DaySchedule | null {
+  const sequenceDay = activeSequenceDay(date, progress.plays, progress.sequenceOffset ?? 0);
+  const assigned = dailyQuestions(date, progress.plays, progress.sequenceOffset ?? 0);
   if (assigned.length !== 3) return null;
   return { date, hulogNumber: sequenceDay, isSunday: dayOfWeek(date) === 0, cards: assigned.map(question => ({ question, role: 'new' as CardRole })), tags: assigned.some(q => q.paydaySpecial) ? ['Sweldo Hulog Special'] : [] };
 

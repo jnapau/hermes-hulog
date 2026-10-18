@@ -105,7 +105,7 @@ export default function Home() {
         ) : (
           <Link to="/play" className="btn-flame sanctuary-cta">
             <Play size={18} />
-            <span>{isAdmin ? 'Practice any day · Days 1–365' : `Day ${activeSequenceDay(today, progress.plays)} · Today’s daily drop`}</span>
+            <span>{isAdmin ? 'Practice any day · Days 1–365' : `Day ${activeSequenceDay(today, progress.plays, progress.sequenceOffset ?? 0)} · Today’s daily drop`}</span>
           </Link>
         )}
         {!isAdmin && <>

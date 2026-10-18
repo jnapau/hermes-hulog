@@ -27,5 +27,5 @@ export async function deleteCustomQuestion(id: string) {
   const { error } = await supabase.from('questions').delete().eq('id', id);
   if (error) throw new Error(error.message); await refreshQuestions();
 }
-export function dailyQuestions(date: string, plays: CompletedPlays = {}) { return selectDailyQuestions(questions,date,plays); }
+export function dailyQuestions(date: string, plays: CompletedPlays = {}, sequenceOffset = 0) { return selectDailyQuestions(questions,date,plays,sequenceOffset); }
 if (configured) void refreshQuestions().catch(reportError);
