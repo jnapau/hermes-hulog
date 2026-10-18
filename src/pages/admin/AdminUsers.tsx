@@ -30,7 +30,7 @@ export default function AdminUsers() {
         <table className="data-table">
           <thead>
             <tr>
-              {['Username', 'Date created', 'Coins', 'Streak', 'Collection', 'Question Day (QA)', 'Role'].map(h => (
+              {['Username', 'Date created', 'Alkansya (Banked)', 'Wallet', 'Streak', 'Collection', 'Question Day (QA)', 'Role'].map(h => (
                 <th key={h}>{h}</th>
               ))}
             </tr>
@@ -40,7 +40,8 @@ export default function AdminUsers() {
               <tr key={u.id}>
                 <td>{u.username}</td>
                 <td>{u.registeredAt.slice(0, 10)}</td>
-                <td>{u.is_admin ? '—' : u.coins}</td>
+                <td>{u.is_admin ? '—' : `${u.alkansyaCoins} coins`}</td>
+                <td>{u.is_admin ? '—' : `${u.coins} coins`}</td>
                 <td>{u.is_admin ? '—' : u.streak}</td>
                 <td>{u.unlocked}</td>
                 <td>

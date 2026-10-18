@@ -3,7 +3,7 @@ import { COLLECTIBLES } from '../data/collectibles';
 import { activeSequenceDay } from './dailyQuestions';
 import { todayPH } from './date';
 import { configured, reportError, supabase } from './supabase';
-export interface User { id: string; username: string; registeredAt: string; is_admin: boolean; coins: number; streak: number; unlocked: number; questionDay: number; todayAnswered: number; todayCompleted: boolean }
+export interface User { id: string; username: string; registeredAt: string; is_admin: boolean; coins: number; alkansyaCoins: number; streak: number; unlocked: number; questionDay: number; todayAnswered: number; todayCompleted: boolean }
 export interface AnswerLog { id: string; username: string; questionId: string; userChoice: string; isCorrect: boolean; date: string; timestamp: string }
 let state = { currentUser: null as User | null, users: [] as User[], logs: [] as AnswerLog[], equippedLook: null as string | null, loading: true, ownedIds: [] as string[] };
 const listeners = new Set<() => void>();
@@ -32,6 +32,7 @@ const userFrom = (
     registeredAt: p.created_at,
     is_admin: p.is_admin,
     coins: p.coins,
+    alkansyaCoins: typeof p.progress?.alkansyaCoins === 'number' ? p.progress.alkansyaCoins : 0,
     streak: p.streak,
     unlocked: count,
     questionDay: activeSequenceDay(today, plays, offset),
