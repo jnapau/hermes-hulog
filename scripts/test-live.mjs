@@ -51,7 +51,7 @@ try {
   await second.auth.signOut();
   check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
   check(await player.rpc('save_progress',{p_progress:{plays:{[date]:{hakbang:true}}}}));
-  assert.equal(check(await player.from('profiles').select('progress').single()).progress.alkansyaCoins,9,'action is banked once');
+  assert.equal(check(await player.from('profiles').select('progress').single()).progress.alkansyaCoins,6,'action is banked once');
   const returning=client(publicKey);
   check(await returning.auth.signInWithPassword({email:`${name}@players.hulog.internal`,password}));
   assert.equal(check(await returning.from('profiles').select('*').single()).progress.plays[date].barya,3,'progress restores in a fresh session');

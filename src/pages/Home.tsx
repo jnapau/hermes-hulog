@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Play, CheckCircle2, X } from "lucide-react";
 import {
@@ -31,6 +31,7 @@ export default function Home() {
       total: number;
     } | null>(null),
     [error, setError] = useState("");
+  const autoClaimedRef = useRef<string | null>(null);
   const week = Array.from({ length: 7 }, (_, i) =>
       addDays(weekStart(today), i),
     ),
@@ -38,6 +39,29 @@ export default function Home() {
   const goal = progress.targetGoal
     ? COLLECTIBLE_BY_ID[progress.targetGoal]
     : null;
+
+  useEffect(() => {
+    if (loading || !currentUser || isAdmin || !ready || claiming || reward) return;
+    const claimKey = `${currentUser.id}:${weekStart(today)}:${progress.alkansyaCoins}`;
+    if (autoClaimedRef.current === claimKey) return;
+    autoClaimedRef.current = claimKey;
+    setClaiming(true);
+    setError("");
+    void doBasag(today)
+      .then((payout) => {
+        if (payout) {
+          playBasag(progress.sound);
+          setReward(payout);
+        }
+      })
+      .catch((e) => {
+        autoClaimedRef.current = null;
+        setError((e as Error).message);
+      })
+      .finally(() => {
+        setClaiming(false);
+      });
+  }, [loading, currentUser, isAdmin, ready, claiming, reward, today, progress.alkansyaCoins, progress.sound]);
 
   if (loading)
     return (
@@ -62,7 +86,7 @@ export default function Home() {
         </h1>
         <div className="sanctuary-scene">
           <Alkansya
-            fillPercentage={isAdmin ? 0 : Math.min(100, (progress.alkansyaCoins / 63) * 100)}
+            fillPercentage={isAdmin ? 0 : Math.min(100, (progress.alkansyaCoins / 42) * 100)}
           />
           <HestiaMascot pose={played ? "done" : "idle"} height={112} />
         </div>
@@ -74,7 +98,7 @@ export default function Home() {
             </p>
             {!progress.plays[today]?.hakbang && (
               <Link to="/play" className="btn-flame sanctuary-cta">
-                Finish Isang Hakbang · +5 coins
+                Finish Isang Hakbang · +2 coins
               </Link>
             )}
           </>
@@ -161,7 +185,7 @@ export default function Home() {
               }
             }}
           >
-            {claiming ? "Collecting…" : "Open Alkansya & Collect Coins"}
+            {claiming ? "Collecting your Sunday Alkansya…" : "Open Alkansya & Collect Coins"}
             <small lang="fil">Buksan ang Alkansya</small>
           </button>
         )}

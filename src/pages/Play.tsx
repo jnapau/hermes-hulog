@@ -330,7 +330,7 @@ export default function Play() {
         <Alkansya
           fillPercentage={isAdmin ? 0 : Math.min(
             100,
-            Math.max(18, (progress.alkansyaCoins / 63) * 100),
+            Math.max(18, (progress.alkansyaCoins / 42) * 100),
           )}
           animated={!isAdmin && dropping}
           dropCount={finaleCount}
@@ -358,7 +358,7 @@ export default function Play() {
         )}
         <p className="text-sm">Three small lessons. One stronger habit.</p>
         <div className="hakbang">
-          <h2 className="font-bold">{isAdmin ? 'Isang Hakbang · Practice step' : 'Isang Hakbang · +5 coins'}</h2>
+          <h2 className="font-bold">{isAdmin ? 'Isang Hakbang · Practice step' : 'Isang Hakbang · +2 coins'}</h2>
           <p className="text-sm mt-3 font-semibold">
             {schedule.cards[2].question.hakbangEnglish ||
               "Take one small money step today."}
@@ -391,12 +391,12 @@ export default function Play() {
           >
             {hakbang || (!isAdmin && progress.plays[today]?.hakbang) ? (
               <>
-                <Check size={16} />{isAdmin ? 'Practice step complete' : '5 coins saved in your Alkansya'}
+                <Check size={16} />{isAdmin ? 'Practice step complete' : '2 coins saved in your Alkansya'}
               </>
             ) : busy ? (
               "Saving…"
             ) : (
-              isAdmin ? 'I practiced this step' : "I completed this step · +5 coins"
+              isAdmin ? 'I practiced this step' : "I completed this step · +2 coins"
             )}
           </button>
         </div>
@@ -628,7 +628,7 @@ export default function Play() {
                 <Alkansya
                   fillPercentage={isAdmin ? 0 : Math.min(
                     100,
-                    (progress.alkansyaCoins / 63) * 100,
+                    (progress.alkansyaCoins / 42) * 100,
                   )}
                   animated={!isAdmin && dropping}
                 />

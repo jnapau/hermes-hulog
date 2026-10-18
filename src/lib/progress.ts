@@ -312,7 +312,7 @@ export async function completeHakbang(today: ISODate): Promise<void> {
   if (!rec || rec.hakbang) return;
   await save({
     ...state,
-    ginto: state.ginto + 5,
+    ginto: state.ginto + 2,
     plays: { ...state.plays, [today]: { ...rec, hakbang: true } },
   });
 }
@@ -320,7 +320,7 @@ export async function completeHakbang(today: ISODate): Promise<void> {
 export function canBasag(p: Progress, today: ISODate): boolean {
   return (
     dayOfWeek(today) === 0 &&
-    Boolean(p.plays[today]) &&
+    p.alkansyaCoins > 0 &&
     !p.cashouts[weekStart(today)]
   );
 }

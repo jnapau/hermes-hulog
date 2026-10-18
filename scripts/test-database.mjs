@@ -369,7 +369,7 @@ await db.query("select save_progress($1)", [
 ]);
 assert.equal(
   (await db.query("select progress from profiles")).rows[0].progress.ginto,
-  5,
+  2,
   "micro-action reward is idempotent",
 );
 await asUser(admin);
@@ -490,14 +490,14 @@ assert.equal(
   0,
   "old Sunday request grants nothing",
 );
-// Need a completed Sunday even when the bank has savings.
+// Empty Alkansya on Sunday rejects payout until coins are saved.
 await db.exec("reset role");
 await db.query("update profiles set progress=$1 where id=$2", [
-  { plays: {}, cashouts: {}, alkansyaCoins: 63 },
+  { plays: {}, cashouts: {}, alkansyaCoins: 0 },
   player,
 ]);
 await asUser(player);
-await rejected(() => db.query("select open_alkansya()"), /Complete Sunday/);
+await rejected(() => db.query("select open_alkansya()"), /Save coins/);
 await db.exec("reset role");
 await db.query("update profiles set progress=$1 where id=$2", [
   {
@@ -614,13 +614,13 @@ await db.query("select save_progress($1)", [
 assert.equal(
   (await db.query("select progress from profiles")).rows[0].progress
     .alkansyaCoins,
-  5,
+  2,
 );
 await db.query("select open_alkansya()");
 assert.equal(
   (await db.query("select progress from profiles")).rows[0].progress
     .alkansyaCoins,
-  5,
+  2,
 );
 // Monday rejects collection, even with saved coins.
 await db.exec("reset role");
@@ -628,7 +628,7 @@ await db.exec(
   originalOpen.replaceAll("now()", "'2026-10-19T04:00:00Z'::timestamptz"),
 );
 await asUser(player);
-await rejected(() => db.query("select open_alkansya()"), /Complete Sunday/);
+await rejected(() => db.query("select open_alkansya()"), /Sunday/);
 
 // Equip validation and anonymous access remain part of the economy contract.
 await db.exec("reset role");

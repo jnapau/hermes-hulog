@@ -144,7 +144,7 @@ async function session(viewport, admin = false) {
           !profile.progress.plays[today].hakbang
         ) {
           profile.progress.plays[today].hakbang = true;
-          profile.progress.alkansyaCoins += 5;
+          profile.progress.alkansyaCoins += 2;
         }
         if ("targetGoal" in p) profile.progress.targetGoal = p.targetGoal;
         data = profile.progress;
@@ -194,6 +194,9 @@ try {
     await page
       .getByRole("heading", { name: "One small drop. A stronger tomorrow." })
       .waitFor();
+    await page.getByRole("heading", { name: "+19 Wallet coins!" }).waitFor();
+    await page.screenshot({ path: `${out}/${label}-payout.png` });
+    await page.getByRole("button", { name: "Close payout" }).click();
     await page.locator(".hestia-stage img").evaluate((img) => img.decode());
     await page.screenshot({ path: `${out}/${label}-home.png`, fullPage: true });
     await page.goto("http://127.0.0.1:5173/koleksyon");
@@ -217,7 +220,7 @@ try {
       .waitFor();
     await page.getByRole("button", { name: /Buy for/ }).click();
     await page.getByText("In your collection", { exact: true }).waitFor();
-    assert.equal(getProfile().coins, 70);
+    assert.equal(getProfile().coins, 89);
     await page.getByRole("button", { name: "Close details" }).click();
     await page.goto("http://127.0.0.1:5173/play?day=365");
     assert.equal(await page.getByLabel('Practice day',{exact:true}).count(),0,'players cannot choose practice days');
@@ -256,19 +259,16 @@ try {
       .getByText("Perfect Hulog · +1 bonus coin!", { exact: true })
       .waitFor();
     await page
-      .getByRole("button", { name: "I completed this step · +5 coins" })
+      .getByRole("button", { name: "I completed this step · +2 coins" })
       .click();
     await page
-      .getByText("5 coins saved in your Alkansya", { exact: true })
+      .getByText("2 coins saved in your Alkansya", { exact: true })
       .waitFor();
     await page.screenshot({
       path: `${out}/${label}-complete.png`,
       fullPage: true,
     });
     await page.getByRole("link", { name: "Back to My Alkansya" }).click();
-    await page.getByRole("button", { name: /Open Alkansya/ }).click();
-    await page.getByRole("heading", { name: "+28 Wallet coins!" }).waitFor();
-    await page.screenshot({ path: `${out}/${label}-payout.png` });
     await ctx.close();
     const a = await session(viewport, true);
     const adminBefore=structuredClone(a.getProfile());
