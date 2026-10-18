@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, RotateCcw, X } from "lucide-react";
 import { todayPH } from "../lib/date";
 import { getDaySchedule, getPracticeSchedule } from "../lib/schedule";
 import { activeSequenceDay, CURRICULUM_DAYS } from "../lib/dailyQuestions";
@@ -10,7 +10,6 @@ import { playClink, playSoft, unlockAudio } from "../lib/sound";
 import { Alkansya } from "../components/Alkansya";
 import {
   recordUserAnswer,
-  getAllAnswerLogs,
   getCurrentUsername,
   useAuth,
 } from "../lib/users";
@@ -26,6 +25,7 @@ type Submission = {
   index: number;
   id: string;
   choice: string;
+  correct: boolean;
   status: "pending" | "saved" | "error";
   promise?: Promise<void>;
 };
@@ -34,16 +34,17 @@ export default function Play() {
   const questions = useAllQuestions();
   const today = todayPH();
   const progress = useProgress();
-  const { currentUser } = useAuth();
+  const { currentUser, logs } = useAuth();
   const isAdmin = currentUser?.is_admin === true;
   const [practiceDay, setPracticeDay] = useState(() => activeSequenceDay(today, progress.plays));
   const schedule = isAdmin ? getPracticeSchedule(today, practiceDay) : getDaySchedule(today, progress);
+  const username = currentUser?.username || getCurrentUsername();
   const saved = isAdmin
     ? [undefined, undefined, undefined]
     : schedule?.cards.map((c) =>
-        getAllAnswerLogs().find(
+        logs.find(
           (a) =>
-            a.username === getCurrentUsername() &&
+            a.username === username &&
             a.date === today &&
             a.questionId === c.question.id,
         ),
@@ -74,6 +75,34 @@ export default function Play() {
   const nextButton = useRef<HTMLButtonElement>(null);
   const prompt = useRef<HTMLHeadingElement>(null);
   const question = schedule?.cards[cardIndex]?.question;
+
+  const savedSignature = saved.map((a) => (a ? `${a.questionId}:${a.userChoice}:${a.isCorrect}` : "")).join("|");
+
+  // Restore saved partial progress when returning to Play or after account logs finish hydrating
+  useEffect(() => {
+    if (isAdmin || !schedule || submissions.current.length > 0) return;
+    if (!saved.some(Boolean)) return;
+    setResults(saved.map((a) => a?.isCorrect));
+    if (missing === -1) {
+      locked.current = true;
+      setCardIndex(2);
+      setSelected(saved[2]?.userChoice || null);
+      if (schedule.cards[2]?.question.kind === "sort" && saved[2]?.userChoice) {
+        try {
+          setMapping(JSON.parse(saved[2].userChoice));
+        } catch {
+          /* ignore malformed sort state */
+        }
+      }
+      setFeedback(true);
+    } else {
+      locked.current = false;
+      setCardIndex(missing);
+      setSelected(null);
+      setMapping({});
+      setFeedback(false);
+    }
+  }, [isAdmin, savedSignature, missing]);
 
   const clearTimers = () => {
     clearTimeout(coinTimer.current);
@@ -134,7 +163,7 @@ export default function Play() {
       return entry.promise;
     }
     entry.status = "pending";
-    entry.promise = recordUserAnswer(entry.id, entry.choice, false, today)
+    entry.promise = recordUserAnswer(entry.id, entry.choice, entry.correct, today)
       .then((correct) => {
         entry.status = "saved";
         if (mounted.current)
@@ -176,6 +205,7 @@ export default function Play() {
       index: cardIndex,
       id: question.id,
       choice,
+      correct,
       status: isAdmin ? "saved" : "pending",
     };
     submissions.current.push(entry);
@@ -185,11 +215,22 @@ export default function Play() {
   async function next() {
     if (!feedback || busy) return;
     if (cardIndex < 2) {
-      locked.current = false;
-      setFeedback(false);
-      setSelected(null);
-      setMapping({});
-      setCardIndex((i) => i + 1);
+      const nextMissing = [0, 1, 2].find(
+        (idx) => idx > cardIndex && results[idx] === undefined && !saved[idx],
+      );
+      const targetIndex = nextMissing ?? cardIndex + 1;
+      const existingAnswer = saved[targetIndex];
+      if (existingAnswer) {
+        locked.current = true;
+        setFeedback(true);
+        setSelected(existingAnswer.userChoice);
+      } else {
+        locked.current = false;
+        setFeedback(false);
+        setSelected(null);
+        setMapping({});
+      }
+      setCardIndex(targetIndex);
       return;
     }
     setBusy(true);
@@ -279,6 +320,9 @@ export default function Play() {
       </div>
     );
   const finished = complete || (!isAdmin && Boolean(progress.plays[today]));
+  const finalResults = !isAdmin && progress.plays[today]?.results
+    ? progress.plays[today].results
+    : results.map(Boolean);
   if (finished)
     return (
       <div className="play-finished">
@@ -294,6 +338,20 @@ export default function Play() {
         <h1>
           {isAdmin ? `Practice complete · ${results.filter(Boolean).length}/3 correct` : `Well done! +${progress.plays[today]?.barya ?? results.filter(Boolean).length} coins into your Alkansya`}
         </h1>
+        <div className="result-pills" aria-label="Round results">
+          {[0, 1, 2].map((idx) => {
+            const right = Boolean(finalResults[idx]);
+            return (
+              <span
+                key={idx}
+                className={`result-pill ${right ? "is-correct" : "is-wrong"}`}
+              >
+                {right ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
+                Card {idx + 1} · {right ? "Right" : "Wrong"}
+              </span>
+            );
+          })}
+        </div>
         {((!isAdmin && progress.plays[today]?.results.every(Boolean)) ||
           results.filter(Boolean).length === 3) && (
           <p className="perfect-hulog">{isAdmin ? 'Perfect practice round!' : 'Perfect Hulog · +1 bonus coin!'}</p>
@@ -369,6 +427,9 @@ export default function Play() {
             { key: "MALI", text: "False", textFilipino: "Mali" },
           ]
       : question.options || [];
+  const answeredCount = [0, 1, 2].filter(
+    (idx) => results[idx] !== undefined && (idx !== cardIndex || feedback),
+  ).length;
   return (
     <div className="play-viewport">
       {practiceControls}
@@ -385,8 +446,38 @@ export default function Play() {
       </header>
       <div className="play-progress" aria-label={`Card ${cardIndex + 1} of 3`}>
         <i
-          style={{ width: `${((cardIndex + (feedback ? 1 : 0)) / 3) * 100}%` }}
+          style={{ width: `${(answeredCount / 3) * 100}%` }}
         />
+      </div>
+      <div className="result-pills" aria-label="Card progress">
+        {[0, 1, 2].map((idx) => {
+          const res = results[idx];
+          const answered = res !== undefined && (idx !== cardIndex || feedback);
+          return (
+            <span
+              key={idx}
+              className={`result-pill ${
+                answered
+                  ? res
+                    ? "is-correct"
+                    : "is-wrong"
+                  : idx === cardIndex
+                    ? "is-active"
+                    : ""
+              }`}
+            >
+              {answered ? (
+                res ? (
+                  <Check size={13} strokeWidth={3} />
+                ) : (
+                  <X size={13} strokeWidth={3} />
+                )
+              ) : null}
+              Card {idx + 1}
+              {answered ? (res ? " · Right" : " · Wrong") : ""}
+            </span>
+          );
+        })}
       </div>
       <div className="play-question">
         <p className="play-format">
@@ -400,18 +491,33 @@ export default function Play() {
           {question.promptFilipino}
         </p>
       </div>
-      {!feedback && (
-        <div className="play-answers">
-          {question.kind !== "sort" ? (
-            <div
-              className={
-                question.kind === "binary" ? "binary-answers" : "choice-answers"
-              }
-            >
-              {options.map((o, i) => (
+      <div className="play-answers">
+        {question.kind !== "sort" ? (
+          <div
+            className={
+              question.kind === "binary" ? "binary-answers" : "choice-answers"
+            }
+          >
+            {options.map((o, i) => {
+              const isOptionCorrect = feedback && o.key === question.answer;
+              const isOptionWrongPick =
+                feedback && selected === o.key && o.key !== question.answer;
+              const isOptionDim =
+                feedback && !isOptionCorrect && !isOptionWrongPick;
+              return (
                 <button
                   key={o.key}
+                  disabled={feedback}
                   aria-pressed={selected === o.key}
+                  className={
+                    isOptionCorrect
+                      ? "answer-correct"
+                      : isOptionWrongPick
+                        ? "answer-wrong anim-shake"
+                        : isOptionDim
+                          ? "answer-dim"
+                          : ""
+                  }
                   onClick={() => answer(o.key)}
                 >
                   <kbd>{i + 1}</kbd>
@@ -421,14 +527,41 @@ export default function Play() {
                       <small lang="fil">{o.textFilipino}</small>
                     )}
                   </span>
+                  {isOptionCorrect && (
+                    <em className="answer-tag is-correct">
+                      <Check size={14} strokeWidth={3} />
+                      Right
+                    </em>
+                  )}
+                  {isOptionWrongPick && (
+                    <em className="answer-tag is-wrong">
+                      <X size={14} strokeWidth={3} />
+                      Wrong
+                    </em>
+                  )}
                 </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="sort-items">
-                {question.items?.map((item) => (
-                  <fieldset key={item.key}>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <div className="sort-items">
+              {question.items?.map((item) => {
+                const itemRight =
+                  feedback && mapping[item.key] === item.answer;
+                const itemWrong =
+                  feedback && mapping[item.key] !== item.answer;
+                return (
+                  <fieldset
+                    key={item.key}
+                    className={
+                      itemRight
+                        ? "sort-fieldset-correct"
+                        : itemWrong
+                          ? "sort-fieldset-wrong"
+                          : ""
+                    }
+                  >
                     <legend>{item.text}</legend>
                     {item.textFilipino && (
                       <p lang="fil" className="translation">
@@ -436,24 +569,40 @@ export default function Play() {
                       </p>
                     )}
                     <div>
-                      {question.categories?.map((cat) => (
-                        <button
-                          key={cat}
-                          aria-pressed={mapping[item.key] === cat}
-                          onClick={() =>
-                            setMapping((m) => ({ ...m, [item.key]: cat }))
-                          }
-                        >
-                          <span>
-                            {cat}
-                            <small lang="fil">{SORT_LABELS[cat] || cat}</small>
-                          </span>
-                        </button>
-                      ))}
+                      {question.categories?.map((cat) => {
+                        const isPicked = mapping[item.key] === cat;
+                        const isRightCat = feedback && item.answer === cat;
+                        const isWrongCat =
+                          feedback && isPicked && item.answer !== cat;
+                        return (
+                          <button
+                            key={cat}
+                            disabled={feedback}
+                            aria-pressed={isPicked}
+                            className={
+                              isRightCat
+                                ? "answer-correct"
+                                : isWrongCat
+                                  ? "answer-wrong"
+                                  : ""
+                            }
+                            onClick={() =>
+                              setMapping((m) => ({ ...m, [item.key]: cat }))
+                            }
+                          >
+                            <span>
+                              {cat}
+                              <small lang="fil">{SORT_LABELS[cat] || cat}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </fieldset>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+            {!feedback && (
               <button
                 className="btn-flame text-sm py-3 w-full"
                 disabled={!question.items?.every((i) => mapping[i.key])}
@@ -461,33 +610,31 @@ export default function Play() {
               >
                 Check my sort
               </button>
-            </>
-          )}
-        </div>
-      )}
+            )}
+          </>
+        )}
+      </div>
       {feedback && (
-        <section className="play-feedback" aria-label="Answer feedback">
-          <div className="feedback-title">
-            <strong role="status">
-              {results[cardIndex]
-                ? (isAdmin ? "Correct!" : "Correct! Coin on its way.")
-                : "A useful lesson for next time."}
-            </strong>
-            <div className="mini-bank">
-              <Alkansya
-                fillPercentage={isAdmin ? 0 : Math.min(
-                  100,
-                  (progress.alkansyaCoins / 63) * 100,
-                )}
-                animated={!isAdmin && dropping}
-              />
+        <section className="play-feedback anim-pop" aria-label="Answer feedback">
+          <div className="feedback-lesson-row">
+            <div className="feedback-lesson-copy">
+              <p className="feedback-why">{question.why}</p>
+              <p lang="fil" className="translation">
+                {question.whyFilipino}
+              </p>
             </div>
+            {results[cardIndex] && (
+              <div className="mini-bank">
+                <Alkansya
+                  fillPercentage={isAdmin ? 0 : Math.min(
+                    100,
+                    (progress.alkansyaCoins / 63) * 100,
+                  )}
+                  animated={!isAdmin && dropping}
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs font-bold text-cocoa">{question.answerLabel}</p>
-          <p className="feedback-why">{question.why}</p>
-          <p lang="fil" className="translation">
-            {question.whyFilipino}
-          </p>
           <button
             ref={nextButton}
             disabled={busy}

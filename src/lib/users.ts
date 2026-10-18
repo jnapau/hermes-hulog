@@ -18,6 +18,24 @@ async function readRows(table: string, columns = '*') {
   }
 }
 const userFrom = (p: { id: string; username: string; created_at: string; is_admin: boolean; coins: number; streak: number }, count = 0): User => ({ id: p.id, username: p.username, registeredAt: p.created_at, is_admin: p.is_admin, coins: p.coins, streak: p.streak, unlocked: count });
+const PARTIAL_KEY = 'hulog:partial-answers';
+function readLocalAnswers(username: string, date: string): AnswerLog[] {
+  try {
+    const raw = localStorage.getItem(`${PARTIAL_KEY}:${username}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as AnswerLog[];
+    return Array.isArray(parsed) ? parsed.filter(a => a.date === date && a.username === username) : [];
+  } catch {
+    return [];
+  }
+}
+function writeLocalAnswers(username: string, date: string, logs: AnswerLog[]) {
+  try {
+    localStorage.setItem(`${PARTIAL_KEY}:${username}`, JSON.stringify(logs.filter(a => a.date === date && a.username === username)));
+  } catch {
+    /* ignore storage quota errors */
+  }
+}
 export async function refreshAccount() {
   const run = ++generation;
   const { data: { session } } = await supabase.auth.getSession();
@@ -37,10 +55,23 @@ export async function refreshAccount() {
     const adminIds = new Set(state.users.filter(u => u.is_admin).map(u => u.id));
     state.logs = logs.filter(a => !adminIds.has(a.user_id)).map(a => ({ id: a.id, username: state.users.find(u => u.id === a.user_id)?.username || 'Deleted user', questionId: a.question_id, userChoice: a.user_choice, isCorrect: a.is_correct, date: a.play_date, timestamp: a.answered_at }));
   } else {
-    const { data, error } = await supabase.from('user_answers').select('*').eq('user_id',session.user.id).eq('play_date',todayPH());
+    const today = todayPH();
+    const { data, error } = await supabase.from('user_answers').select('*').eq('user_id',session.user.id).eq('play_date',today);
     if (run !== generation) return;
     if (error) throw new Error('Your saved answers could not load. Please refresh to retry.');
-    state.logs = (data || []).map(a => ({id:a.id,username:p.username,questionId:a.question_id,userChoice:a.user_choice,isCorrect:a.is_correct,date:a.play_date,timestamp:a.answered_at}));
+    const serverLogs: AnswerLog[] = (data || []).map(a => ({id:a.id,username:p.username,questionId:a.question_id,userChoice:a.user_choice,isCorrect:a.is_correct,date:a.play_date,timestamp:a.answered_at}));
+    const localLogs = readLocalAnswers(p.username, today);
+    const unsent = localLogs.filter(l => !serverLogs.some(s => s.questionId === l.questionId));
+    for (const pending of unsent) {
+      const res = await supabase.rpc('submit_answer', { p_question: pending.questionId, p_choice: pending.userChoice });
+      if (!res.error) {
+        serverLogs.push({ ...pending, isCorrect: typeof res.data === 'boolean' ? res.data : pending.isCorrect });
+      } else {
+        serverLogs.push(pending);
+      }
+    }
+    writeLocalAnswers(p.username, today, serverLogs);
+    state.logs = serverLogs;
   }
   state.loading = false;
   window.dispatchEvent(new CustomEvent('hulog:hydrate', { detail: p.progress || {} }));
@@ -68,7 +99,23 @@ async function authenticate(username: string, password: string, register: boolea
 export const loginUser = (u: string, p: string) => authenticate(u, p, false);
 export const registerUser = (u: string, p: string) => authenticate(u, p, true);
 export async function logoutUser() { const { error } = await supabase.auth.signOut(); if (error) reportError(error.message); else await refreshAccount(); }
-export async function recordUserAnswer(questionId: string, userChoice: string, _correct: boolean, _date: string) {
+export async function recordUserAnswer(questionId: string, userChoice: string, correct: boolean, date: string) {
+  const username = getCurrentUsername();
+  if (username && !state.currentUser?.is_admin) {
+    const entry: AnswerLog = {
+      id: `local-${questionId}`,
+      username,
+      questionId,
+      userChoice,
+      isCorrect: correct,
+      date,
+      timestamp: new Date().toISOString(),
+    };
+    const nextLogs = [...state.logs.filter(a => !(a.username === username && a.date === date && a.questionId === questionId)), entry];
+    state.logs = nextLogs;
+    writeLocalAnswers(username, date, nextLogs);
+    notify();
+  }
   const { data, error } = await supabase.rpc('submit_answer', { p_question: questionId, p_choice: userChoice });
   if (error) throw new Error(error.message); await refreshAccount(); return data as boolean;
 }

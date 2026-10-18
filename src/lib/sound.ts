@@ -41,8 +41,9 @@ export function unlockAudio(enabled = true) { if (enabled) audio(); }
 
 export function playSoft(enabled = true) {
   if (!enabled) return;
-  tone(392, 0, 0.18, 'sine', 0.08);
-  vibrate(15);
+  tone(330, 0, 0.14, 'triangle', 0.12);
+  tone(220, 0.12, 0.22, 'triangle', 0.12);
+  vibrate([35, 40, 60]);
 }
 
 export function playBasag(enabled = true) {
